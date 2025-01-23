@@ -1,0 +1,61 @@
+Syntactic Grammar:
+    Letter -> entire token
+    String -> sequence of tokens (even an entire expression)
+
+    -------------------------------------------------
+    Term        Lexical Grammar     Syntactic Grammar
+    Alphabet    Character           Tokens
+    String      Lexeme/Token        Expression
+    Impl        Scanner             Parser
+
+
+    A formal Grammar's job is specify which strings are valid or invalid
+
+    Rules for Grammars
+    We generalize rules that produce valid grammatical sentences
+    Therefore we have rules that generate strings that are in the grammar.
+    Strings that created are called derivations.
+    Rules are called Productions.
+
+    Each production has a head (the name) and a body which describes what it generates.
+    And body is a list of symbols, and they are of two types:
+    Terminal -> Letter from the grammar's alphabet. Like a literal value.
+                In SG, the terminals aare lexemes - tokens coming from the scanner like "if" or "1234"
+                They are called Terminals because they don't lead to any further "moves" or symbols.
+    Non-Terminal -> named reference to another rule in the grammar. Produce something else.
+    Caveat: there may be multiple rules with same name. So when we reach a nonterminal with that name, pick any.
+
+    "Recursion in the grammar is a good sign that the language being defined is context-free instead of regular"
+    if we hit a rule that had multiple productions, we just pick one arbitrarily. This flexibility allows a short
+    number of grammar rules to encode a combinatorially larger set of strings.
+
+    We can separate series of productions with a pipe (|)
+        bread -> "toast" | "biscuits" | "Muffins"
+    We can allow for parentheses for grouping them and then allow | within that to select one from a series of
+    options within the middle of production:
+        protein -> ("scrambled" | "poached" | "fried") "eggs"
+    We can use a postfix * to allow the previous symbol or group to be repeated zero or more times
+        crispiness -> "really" "really"*
+    We can use a postfix + in similar way, but it requires the preceding production to appear atleast once
+        crispiness -> "really"+;
+    We can optionally use postfix ? to signify that the thing before it can appear zero or one time but not more
+        breakfast -> protein ("with" breakfast "on the side")?
+
+    --------------------------------------------------------------
+    breakfast -> protein ("with" breakfast "on the side")? | bread;
+    protein   -> "really"+ "crispy" "bacon"
+                 | "sausage"
+                 | ("scrambled" | "poached" | "fried") "eggs";
+    bread     -> "toast" | "biscuits" | "English muffin";
+
+
+Panic mode error recovery:
+   Panic mode: Basically a parser enters a panic state when it encounters an error and it knows that at least one
+   token doesn't make sense given the current state of the parse.
+   Before it can continue parsing, it needs to get its state and the sequence of forthcoming tokens aligned such that
+   the next token does match the rule being parsed. This process is called synchronization.
+   Will mark the synchronization point by selecting some rule that is likely to be correct and then skip tokens until
+    it finds a token that matches the rule.
+
+
+
