@@ -1,4 +1,4 @@
-package lox
+package src
 
 // TokenType represents the category or type of a token in a lexical analysis process, such as operators, keywords, or literals.
 type TokenType int

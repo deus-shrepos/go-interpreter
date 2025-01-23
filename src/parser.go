@@ -1,4 +1,4 @@
-package lox
+package src
 
 import "fmt"
 
@@ -208,7 +208,7 @@ func (parser *Parser) Unary() (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return Unary{Operator: operator, Right: right}, nil
+		return Unary{operator: operator, Right: right}, nil
 	}
 	primary, err := parser.Primary()
 	if err != nil {

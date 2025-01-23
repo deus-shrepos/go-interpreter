@@ -1,4 +1,4 @@
-package lox
+package src
 
 import (
 	"fmt"
@@ -41,7 +41,7 @@ func (lox *Lox) run(tokenScanner TokenScanner) {
 	//tokens := tokenScanner.ScanTokens()
 	//parser := Parser{Tokens: tokens}
 	//expr, err := parser.Parse()
-	//if lox.HadError {
+	//if src.HadError {
 	//	return
 	//}
 	//astPrinter := tool.PrintAST{}
