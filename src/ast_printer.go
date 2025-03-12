@@ -1,7 +1,6 @@
-package tool
+package src
 
 import (
-	"Crafting-interpreters/src"
 	"fmt"
 )
 
@@ -13,7 +12,6 @@ func (printer PrintAST) VisitBinary(node src.Binary) interface{} {
 	return fmt.Sprintf("(%s %s %s)",
 		node.Left.Accept(printer),
 		node.Right.Accept(printer),
-		node.Operator.Lexeme,
 	)
 }
 
@@ -23,14 +21,19 @@ func (printer PrintAST) VisitGrouping(node src.Grouping) interface{} {
 }
 
 // VisitLiteral generates a string representation of a literal expression based on its value.
-func (printer PrintAST) VisitLiteral(node src.Literal) interface{} {
+func (printer PrintAST) VisitLiteral(node Literal) interface{} {
 	return fmt.Sprintf("%v", node.Value)
 }
 
 // VisitUnary generates a string representation of a unary expression by visiting its operator and operand.
-func (printer PrintAST) VisitUnary(node src.Unary) interface{} {
+func (printer PrintAST) VisitUnary(node Unary) interface{} {
 	return fmt.Sprintf("(%s %s)",
 		node.Operator,
 		node.Right.Accept(printer),
 	)
+}
+
+// // TODO: Need to print the AST in the REPL
+func (printer PrintAST) Print(expression Expr) string {
+	return expression.Accept(printer).(string)
 }

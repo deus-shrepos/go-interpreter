@@ -13,7 +13,7 @@ func (lox *Lox) LoadProgram(path string) {
 	if lox.HadError {
 		panic("Program had errors!")
 	}
-	err := lox.runfile(path)
+	err := lox.loadProgram(path)
 	if err != nil {
 		panic(err)
 	}
@@ -21,8 +21,8 @@ func (lox *Lox) LoadProgram(path string) {
 
 // Runfile We want to scan the tokens in a file
 // We want to scan correct tokens defined
-// in out hypothetical langauge
-func (lox *Lox) runfile(path string) error {
+// in out hypothetical language
+func (lox *Lox) loadProgram(path string) error {
 
 	// We are reading the program text here
 	file, err := os.ReadFile(path)
@@ -38,14 +38,14 @@ func (lox *Lox) runfile(path string) error {
 
 // This your token scanner for the program
 func (lox *Lox) run(tokenScanner TokenScanner) {
-	//tokens := tokenScanner.ScanTokens()
-	//parser := Parser{Tokens: tokens}
-	//expr, err := parser.Parse()
-	//if src.HadError {
-	//	return
-	//}
-	//astPrinter := tool.PrintAST{}
-	fmt.Println()
+	tokens := tokenScanner.ScanTokens()
+	parser := Parser{Tokens: tokens}
+	expr, _ := parser.Parse()
+	if lox.HadError {
+		return
+	}
+	astPrinter := PrintAST{}
+	astPrinter.Print(expr)
 }
 
 // ProgramError Signal to user that something went wrong

@@ -1,12 +1,16 @@
 package src
 
-type Expr interface{}
 type Visitor interface {
 	VisitBinary(node Binary) interface{}
 	VisitGrouping(node Grouping) interface{}
 	VisitLiteral(node Literal) interface{}
 	VisitUnary(node Unary) interface{}
 }
+
+type Expr interface {
+	Accept(visitor Visitor) interface{}
+}
+
 type Binary struct {
 	Left     Expr
 	Operator Token

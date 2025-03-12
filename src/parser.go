@@ -208,7 +208,7 @@ func (parser *Parser) Unary() (Expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return Unary{operator: operator, Right: right}, nil
+		return Unary{Operator: operator, Right: right}, nil
 	}
 	primary, err := parser.Primary()
 	if err != nil {
@@ -229,12 +229,12 @@ func (parser *Parser) Primary() (Expr, error) {
 		return Literal{Value: nil}, nil
 	case parser.match(NUMBER, STRING):
 		return Literal{Value: parser.previous().Literal}, nil
-	case parser.match(LEFT_BRACE):
+	case parser.match(LEFT_PAREN):
 		expr, err := parser.Expression()
 		if err != nil {
 			return nil, err
 		}
-		_, err = parser.consume(RIGHT_BRACE, "Expect ')' after expression.")
+		_, err = parser.consume(RIGHT_PAREN, "Expect ')' after expression.")
 		if err != nil {
 			return nil, err
 		}
