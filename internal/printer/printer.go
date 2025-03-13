@@ -10,7 +10,8 @@ type PrintAST struct{}
 
 // VisitBinary generates a string representation of a binary expression by recursively visiting its left, right, and operator.
 func (printer PrintAST) VisitBinary(node ast.Binary) interface{} {
-	return fmt.Sprintf("(%s %s %s)",
+	return fmt.Sprintf("%s %s %s",
+		node.Operator.Lexeme,
 		node.Left.Accept(printer),
 		node.Right.Accept(printer),
 	)
@@ -18,7 +19,7 @@ func (printer PrintAST) VisitBinary(node ast.Binary) interface{} {
 
 // VisitGrouping creates a string representation of a grouping expression by recursively visiting its inner expression.
 func (printer PrintAST) VisitGrouping(node ast.Grouping) interface{} {
-	return fmt.Sprintf("(group %s)", node.Expression.Accept(printer))
+	return fmt.Sprintf("(%s)", node.Expression.Accept(printer))
 }
 
 // VisitLiteral generates a string representation of a literal expression based on its value.
@@ -28,8 +29,8 @@ func (printer PrintAST) VisitLiteral(node ast.Literal) interface{} {
 
 // VisitUnary generates a string representation of a unary expression by visiting its operator and operand.
 func (printer PrintAST) VisitUnary(node ast.Unary) interface{} {
-	return fmt.Sprintf("(%s %s)",
-		node.Operator,
+	return fmt.Sprintf("%s %s",
+		node.Operator.Lexeme,
 		node.Right.Accept(printer),
 	)
 }
