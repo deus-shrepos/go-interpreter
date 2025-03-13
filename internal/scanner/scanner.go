@@ -58,14 +58,12 @@ func (scanner *TokenScanner) ScanToken() {
 		break
 	case ")":
 		scanner.AddToken(token.RIGHT_PAREN)
-		scanner.AddToken(token.SEMICOLON)
 		break
 	case "{":
 		scanner.AddToken(token.LEFT_BRACE)
 		break
 	case "}":
 		scanner.AddToken(token.RIGHT_BRACE)
-		scanner.AddToken(token.SEMICOLON)
 		break
 	case ",":
 		scanner.AddToken(token.COMMA)
