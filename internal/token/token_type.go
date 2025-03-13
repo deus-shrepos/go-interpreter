@@ -1,4 +1,4 @@
-package src
+package token
 
 // TokenType represents the category or type of a token in a lexical analysis process, such as operators, keywords, or literals.
 type TokenType int
@@ -57,8 +57,8 @@ const (
 	EOF
 )
 
-// keywords is a map linking string representations of language keywords to their corresponding TokenType values.
-var keywords = map[string]TokenType{
+// Keywords is a map linking string representations of language keywords to their corresponding TokenType values.
+var Keywords = map[string]TokenType{
 	"and":    AND,
 	"or":     OR,
 	"class":  CLASS,

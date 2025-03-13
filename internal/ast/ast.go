@@ -1,4 +1,8 @@
-package src
+package ast
+
+import (
+	"Crafting-interpreters/internal/token"
+)
 
 type Visitor interface {
 	VisitBinary(node Binary) interface{}
@@ -13,7 +17,7 @@ type Expr interface {
 
 type Binary struct {
 	Left     Expr
-	Operator Token
+	Operator token.Token
 	Right    Expr
 }
 
@@ -39,7 +43,7 @@ func (node Literal) Accept(visitor Visitor) interface{} {
 
 type Unary struct {
 	Right    Expr
-	Operator Token
+	Operator token.Token
 }
 
 func (node Unary) Accept(visitor Visitor) interface{} {

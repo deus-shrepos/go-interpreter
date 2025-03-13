@@ -1,4 +1,4 @@
-package src
+package printer
 
 import (
 	"bufio"
@@ -8,10 +8,10 @@ import (
 )
 
 var LoxGrammar = []string{
-	"Binary: Left Expr,Operator src.Token,Right Expr",
+	"Binary: Left Expr,Operator internal.Token,Right Expr",
 	"Grouping: Expression Expr",
 	"Literal: Value interface{}", // TODO: enforce a type constraint. Obviously, I don't want just any type.
-	"Unary: Operator src.Token,Right Expr",
+	"Unary: Operator internal.Token,Right Expr",
 }
 
 // GenerateAst This function will generate an AST .go file for each operation
@@ -41,7 +41,7 @@ func defineAst(outputDir string, baseName string, types []string) error {
 	writer := bufio.NewWriter(file)
 	_, _ = writer.WriteString("package ast") // TODO: do I want to keep it as main?
 	_, _ = writer.WriteString("\n\n")
-	_, _ = writer.WriteString("import \"crafting-interpreters/src\"")
+	_, _ = writer.WriteString("import \"crafting-interpreters/internal\"")
 	_, _ = writer.WriteString("\n\n")
 	_, _ = writer.WriteString(strings.Join([]string{"type", " ", baseName, " ", "interface{}"}, ""))
 	_, _ = writer.WriteString("\n")

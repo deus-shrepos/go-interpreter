@@ -1,6 +1,8 @@
-package src
+package scanner
 
 import (
+	"Crafting-interpreters/internal/errors"
+	"Crafting-interpreters/internal/token"
 	"strconv"
 )
 
@@ -21,11 +23,11 @@ import (
 // scanning; such as the start and current(or it could be the end if current = EOF)
 type TokenScanner struct {
 	Source  string
-	Tokens  []Token
+	Tokens  []token.Token
 	Start   int
 	Current int
 	Line    int
-	Lox     Lox
+	Error   errors.Error
 }
 
 // Init This initializes the source code
@@ -34,18 +36,15 @@ func (scanner *TokenScanner) Init(source string) {
 	scanner.Start = 0
 	scanner.Current = 0
 	scanner.Line = 0
-
-	// In case we want to use some Lox functionality - some static classes and stuff
-	scanner.Lox = Lox{}
 }
 
 // ScanTokens scans the source code and produces a list of tokens based on the language grammar.
-func (scanner *TokenScanner) ScanTokens() []Token {
+func (scanner *TokenScanner) ScanTokens() []token.Token {
 	for !scanner.isAtEnd() {
 		scanner.Start = scanner.Current
 		scanner.ScanToken()
 	}
-	scanner.Tokens = append(scanner.Tokens, Token{EOF, "", nil, scanner.Line})
+	scanner.Tokens = append(scanner.Tokens, token.Token{token.EOF, "", nil, scanner.Line})
 	return scanner.Tokens
 }
 
@@ -55,61 +54,61 @@ func (scanner *TokenScanner) ScanToken() {
 
 	switch c {
 	case "(":
-		scanner.AddToken(LEFT_PAREN)
+		scanner.AddToken(token.LEFT_PAREN)
 		break
 	case ")":
-		scanner.AddToken(RIGHT_PAREN)
-		scanner.AddToken(SEMICOLON)
+		scanner.AddToken(token.RIGHT_PAREN)
+		scanner.AddToken(token.SEMICOLON)
 		break
 	case "{":
-		scanner.AddToken(LEFT_BRACE)
+		scanner.AddToken(token.LEFT_BRACE)
 		break
 	case "}":
-		scanner.AddToken(RIGHT_BRACE)
-		scanner.AddToken(SEMICOLON)
+		scanner.AddToken(token.RIGHT_BRACE)
+		scanner.AddToken(token.SEMICOLON)
 		break
 	case ",":
-		scanner.AddToken(COMMA)
+		scanner.AddToken(token.COMMA)
 		break
 	case ".":
-		scanner.AddToken(DOT)
+		scanner.AddToken(token.DOT)
 		break
 	case "-":
-		scanner.AddToken(MINUS)
+		scanner.AddToken(token.MINUS)
 		break
 	case "+":
-		scanner.AddToken(PLUS)
+		scanner.AddToken(token.PLUS)
 		break
 	case ";":
-		scanner.AddToken(SEMICOLON)
+		scanner.AddToken(token.SEMICOLON)
 		break
 	case "*":
-		scanner.AddToken(STAR)
+		scanner.AddToken(token.STAR)
 		break
 	case "!":
-		bang := BANG
+		bang := token.BANG
 		if scanner.match("=") {
-			bang = BANG_EQUAL
+			bang = token.BANG_EQUAL
 		}
 		scanner.AddToken(bang)
 	case "=":
-		equal := EQUAL
+		equal := token.EQUAL
 		if scanner.match("=") {
-			equal = EQUAL_EQUAL
+			equal = token.EQUAL_EQUAL
 		}
 		scanner.AddToken(equal)
 		break
 	case "<":
-		lessEqual := LESS
+		lessEqual := token.LESS
 		if scanner.match("=") {
-			lessEqual = LESS_EQUAL
+			lessEqual = token.LESS_EQUAL
 		}
 		scanner.AddToken(lessEqual)
 		break
 	case ">":
-		greaterEqual := GREATER
+		greaterEqual := token.GREATER
 		if scanner.match("=") {
-			greaterEqual = GREATER_EQUAL
+			greaterEqual = token.GREATER_EQUAL
 		}
 		scanner.AddToken(greaterEqual)
 		break
@@ -120,7 +119,7 @@ func (scanner *TokenScanner) ScanToken() {
 				scanner.advance()
 			}
 		} else {
-			scanner.AddToken(SLASH)
+			scanner.AddToken(token.SLASH)
 		}
 		break
 	case " ":
@@ -139,7 +138,7 @@ func (scanner *TokenScanner) ScanToken() {
 		} else if isAlpha(c) {
 			scanner.identifier()
 		} else {
-			scanner.Lox.ProgramError(scanner.Line, "Unexpected Error")
+			scanner.Error.ProgramError(scanner.Line, "Unexpected Error")
 		}
 		break
 	}
@@ -153,12 +152,12 @@ func (scanner *TokenScanner) string() {
 			scanner.advance()
 		}
 		if scanner.isAtEnd() {
-			scanner.Lox.ProgramError(scanner.Line, "Unterminated string")
+			scanner.Error.ProgramError(scanner.Line, "Unterminated string")
 			return
 		}
 		scanner.advance()
 		value := scanner.Source[scanner.Start+1 : scanner.Current-1]
-		scanner.addToken(STRING, value)
+		scanner.addToken(token.STRING, value)
 	}
 }
 
@@ -176,7 +175,7 @@ func (scanner *TokenScanner) number() {
 		}
 	}
 	doubleNumber, _ := strconv.ParseFloat(scanner.Source[scanner.Start:scanner.Current], 64)
-	scanner.addToken(NUMBER, doubleNumber)
+	scanner.addToken(token.NUMBER, doubleNumber)
 }
 
 // identifier scans for identifiers and keywords doing something called "maximal munch"
@@ -185,9 +184,9 @@ func (scanner *TokenScanner) identifier() {
 		scanner.advance()
 	}
 	text := scanner.Source[scanner.Start:scanner.Current]
-	tokenType := keywords[text]
+	tokenType := token.Keywords[text]
 	if tokenType == 0 {
-		tokenType = IDENTIFIER
+		tokenType = token.IDENTIFIER
 	}
 	scanner.AddToken(tokenType)
 }
@@ -227,14 +226,14 @@ func (scanner *TokenScanner) peek() string {
 }
 
 // AddToken Wrapper around addToken() in case we just need the TokenType added
-func (scanner *TokenScanner) AddToken(tokenType TokenType) {
+func (scanner *TokenScanner) AddToken(tokenType token.TokenType) {
 	scanner.addToken(tokenType, nil)
 }
 
 // addToken Scans the source and appends the tokens to the token array
-func (scanner *TokenScanner) addToken(tokenType TokenType, literal interface{}) {
+func (scanner *TokenScanner) addToken(tokenType token.TokenType, literal interface{}) {
 	text := scanner.Source[scanner.Start:scanner.Current]
-	scanner.Tokens = append(scanner.Tokens, Token{
+	scanner.Tokens = append(scanner.Tokens, token.Token{
 		Type:    tokenType,
 		Lexeme:  text,
 		Literal: literal,
