@@ -3,39 +3,65 @@ package printer
 import (
 	"Crafting-interpreters/internal/ast"
 	"fmt"
+	"strings"
 )
 
 // PrintAST is a visitor implementation for converting abstract syntax trees into their string representation.
-type PrintAST struct{}
+type PrintAST struct {
+	indentation int
+}
 
 // VisitBinary generates a string representation of a binary expression by recursively visiting its left, right, and operator.
-func (printer PrintAST) VisitBinary(node ast.Binary) interface{} {
-	return fmt.Sprintf("%s %s %s",
+func (printer *PrintAST) VisitBinary(node ast.Binary) (interface{}, error) {
+	printer.indentation++
+	left, _ := node.Left.Accept(printer)
+	right, _ := node.Right.Accept(printer)
+	printer.indentation--
+	return fmt.Sprintf("%sBinary(\n%s\n%s%s %s\n%s\n%s)",
+		strings.Repeat("  ", printer.indentation),
+		left.(string),
+		strings.Repeat("  ", printer.indentation+1),
 		node.Operator.Lexeme,
-		node.Left.Accept(printer),
-		node.Right.Accept(printer),
-	)
+		strings.Repeat("  ", printer.indentation+1),
+		right.(string),
+		strings.Repeat("  ", printer.indentation),
+	), nil
 }
 
 // VisitGrouping creates a string representation of a grouping expression by recursively visiting its inner expression.
-func (printer PrintAST) VisitGrouping(node ast.Grouping) interface{} {
-	return fmt.Sprintf("(%s)", node.Expression.Accept(printer))
+func (printer *PrintAST) VisitGrouping(node ast.Grouping) (interface{}, error) {
+	printer.indentation++
+	expr, _ := node.Expression.Accept(printer)
+	printer.indentation--
+	return fmt.Sprintf("%sGrouping(\n%s\n%s)",
+		strings.Repeat("  ", printer.indentation),
+		expr.(string),
+		strings.Repeat("  ", printer.indentation),
+	), nil
 }
 
 // VisitLiteral generates a string representation of a literal expression based on its value.
-func (printer PrintAST) VisitLiteral(node ast.Literal) interface{} {
-	return fmt.Sprintf("%v", node.Value)
+func (printer *PrintAST) VisitLiteral(node ast.Literal) (interface{}, error) {
+	return fmt.Sprintf("%sLiteral(%v)",
+		strings.Repeat("  ", printer.indentation),
+		node.Value,
+	), nil
 }
 
 // VisitUnary generates a string representation of a unary expression by visiting its operator and operand.
-func (printer PrintAST) VisitUnary(node ast.Unary) interface{} {
-	return fmt.Sprintf("%s %s",
+func (printer *PrintAST) VisitUnary(node ast.Unary) (interface{}, error) {
+	printer.indentation++
+	right, _ := node.Right.Accept(printer)
+	printer.indentation--
+	return fmt.Sprintf("%sUnary(\n%s%s\n%s)",
+		strings.Repeat("  ", printer.indentation),
+		strings.Repeat("  ", printer.indentation+1),
 		node.Operator.Lexeme,
-		node.Right.Accept(printer),
-	)
+		right.(string),
+	), nil
 }
 
-// // TODO: Need to print the AST in the REPL
-func (printer PrintAST) Print(expression ast.Expr) string {
-	return expression.Accept(printer).(string)
+func (printer *PrintAST) Print(expression ast.Expr) string {
+	expr, _ := expression.Accept(printer)
+	return expr.(string)
 }
