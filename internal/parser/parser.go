@@ -116,7 +116,7 @@ func (parser *Parser) Parser(tokens []token.Token) {
 func (parser *Parser) Parse() (ast.Expr, error) {
 	expr, err := parser.Expression()
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	return expr, nil
 }
@@ -246,7 +246,10 @@ func (parser *Parser) Primary() (ast.Expr, error) {
 		return ast.Grouping{Expression: expr}, nil
 	default:
 		// We probaby don't want to panic here because we are syncing the parser
-		return nil, parser.ParserError(parser.peek(), "Unexpected expression found!")
+		peek := parser.peek()
+		previous := parser.previous()
+		return nil, parser.ParserError(peek, fmt.Sprintf("Unexpected token '%v' found after '%s' \n", peek.Lexeme, previous.Lexeme))
+
 	}
 }
 
@@ -307,5 +310,5 @@ func (parser *Parser) consume(type_ token.TokenType, message string) (token.Toke
 // The caller can handle the error and decide what to do with it
 func (parser *Parser) ParserError(token token.Token, message string) error {
 	parser.Error.ProgramError(token.Line, message)
-	return fmt.Errorf("parser Error Occurred...Exiting")
+	return fmt.Errorf("parser Error Occurred. Exiting")
 }
