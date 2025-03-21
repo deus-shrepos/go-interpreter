@@ -5,14 +5,14 @@ import (
 )
 
 type Visitor interface {
-	VisitBinary(node Binary) (interface{}, error)
-	VisitGrouping(node Grouping) (interface{}, error)
-	VisitLiteral(node Literal) (interface{}, error)
-	VisitUnary(node Unary) (interface{}, error)
+	VisitBinary(node Binary) (any, error)
+	VisitGrouping(node Grouping) (any, error)
+	VisitLiteral(node Literal) (any, error)
+	VisitUnary(node Unary) (any, error)
 }
 
 type Expr interface {
-	Accept(visitor Visitor) (interface{}, error)
+	Accept(visitor Visitor) (any, error)
 }
 
 type Binary struct {
@@ -21,24 +21,24 @@ type Binary struct {
 	Right    Expr
 }
 
-func (node Binary) Accept(visitor Visitor) (interface{}, error) {
-	return visitor.VisitBinary(node)
+func (node Binary) Accept(visitor Visitor) (any, error) {
+	return visitor.VisitBinary(node) //nolint:wrapcheck
 }
 
 type Grouping struct {
 	Expression Expr
 }
 
-func (node Grouping) Accept(visitor Visitor) (interface{}, error) {
-	return visitor.VisitGrouping(node)
+func (node Grouping) Accept(visitor Visitor) (any, error) {
+	return visitor.VisitGrouping(node) //nolint:wrapcheck
 }
 
 type Literal struct {
-	Value interface{}
+	Value any
 }
 
-func (node Literal) Accept(visitor Visitor) (interface{}, error) {
-	return visitor.VisitLiteral(node)
+func (node Literal) Accept(visitor Visitor) (any, error) {
+	return visitor.VisitLiteral(node) //nolint:wrapcheck
 }
 
 type Unary struct {
@@ -46,6 +46,6 @@ type Unary struct {
 	Operator token.Token
 }
 
-func (node Unary) Accept(visitor Visitor) (interface{}, error) {
-	return visitor.VisitUnary(node)
+func (node Unary) Accept(visitor Visitor) (any, error) {
+	return visitor.VisitUnary(node) //nolint:wrapcheck
 }
