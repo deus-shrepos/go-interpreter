@@ -27,7 +27,6 @@ type TokenScanner struct {
 	Start   int
 	Current int
 	Line    int
-	Error   errors.Error
 }
 
 // Init This initializes the source code
@@ -44,12 +43,12 @@ func (scanner *TokenScanner) ScanTokens() []token.Token {
 		scanner.Start = scanner.Current
 		scanner.ScanToken()
 	}
-	scanner.Tokens = append(scanner.Tokens, token.Token{token.EOF, "", nil, scanner.Line})
+	scanner.Tokens = append(scanner.Tokens, token.Token{Type: token.EOF, Lexeme: "", Literal: nil, Line: scanner.Line})
 	return scanner.Tokens
 }
 
 // ScanToken reads the next character in the source and determines the appropriate token type to add to the token list.
-func (scanner *TokenScanner) ScanToken() {
+func (scanner *TokenScanner) ScanToken() error {
 	c := scanner.advance()
 
 	switch c {
@@ -136,27 +135,35 @@ func (scanner *TokenScanner) ScanToken() {
 		} else if isAlpha(c) {
 			scanner.identifier()
 		} else {
-			scanner.Error.ProgramError(scanner.Line, "Unexpected Error")
+			return errors.ExecutionError{Type: errors.SCANNER_ERROR,
+				Line:    scanner.Line,
+				Where:   "Scanner",
+				Message: "Unexpected Error"}
 		}
 		break
 	}
+	return nil
 }
 
 // string scans a string literal, handles line tracking for multi-line strings, and adds the token to the token list.
-func (scanner *TokenScanner) string() {
+func (scanner *TokenScanner) string() error {
 	for scanner.peek() != "\"" && !scanner.isAtEnd() {
 		if scanner.peek() == "\n" {
 			scanner.Line++
 			scanner.advance()
 		}
 		if scanner.isAtEnd() {
-			scanner.Error.ProgramError(scanner.Line, "Unterminated string")
-			return
+			return errors.ExecutionError{Type: errors.SCANNER_ERROR,
+				Line:    scanner.Line,
+				Where:   string(scanner.Source[scanner.Current]),
+				Message: "Unterminated string",
+			}
 		}
 		scanner.advance()
 		value := scanner.Source[scanner.Start+1 : scanner.Current-1]
 		scanner.addToken(token.STRING, value)
 	}
+	return nil
 }
 
 // number scans a numeric literal, supports fractional parts, and adds the token with its parsed value to the token list.
@@ -188,9 +195,6 @@ func (scanner *TokenScanner) identifier() {
 	}
 	scanner.AddToken(tokenType)
 }
-
-// blockComment - This is for scanning the block comment
-func (scanner *TokenScanner) blockComment() {}
 
 // peekNext returns the character after the current position in the source string without advancing the scanner.
 // If the next position is out of bounds, it returns the null character ("\x00").
@@ -229,7 +233,7 @@ func (scanner *TokenScanner) AddToken(tokenType token.TokenType) {
 }
 
 // addToken Scans the source and appends the tokens to the token array
-func (scanner *TokenScanner) addToken(tokenType token.TokenType, literal interface{}) {
+func (scanner *TokenScanner) addToken(tokenType token.TokenType, literal any) {
 	text := scanner.Source[scanner.Start:scanner.Current]
 	scanner.Tokens = append(scanner.Tokens, token.Token{
 		Type:    tokenType,
