@@ -1,7 +1,6 @@
 package errors
 
 import (
-	"Crafting-interpreters/internal/token"
 	"fmt"
 )
 
@@ -11,7 +10,8 @@ type ExecutionErrorType string
 const (
 	RUNTIME_ERROR ExecutionErrorType = "Runtime Error"
 	PROGRAM_ERROR ExecutionErrorType = "Program Error"
-	PARSER_ERROR  ExecutionErrorType = "Parse Error"
+	PARSER_ERROR  ExecutionErrorType = "Parser Error"
+	SCANNER_ERROR ExecutionErrorType = "Scanner Error"
 )
 
 func (s ExecutionErrorType) String() string {
@@ -20,15 +20,12 @@ func (s ExecutionErrorType) String() string {
 
 type ExecutionError struct {
 	Type    ExecutionErrorType
-	Op      token.Token
+	Line    int
+	Where   string
 	Message string
 }
 
-func (err ExecutionError) Error() string {
-	return report(err)
-}
-
 // Report to user where and why that thing went wrong
-func report(error ExecutionError) string {
-	return fmt.Sprintf("%s [line %d] %s: %s", error.Type, error.Op.Line, "", error.Message)
+func (err ExecutionError) Error() string {
+	return fmt.Sprintf("%s [line %d] %s: %s", err.Type, err.Line, err.Where, err.Message)
 }
