@@ -23,6 +23,7 @@ func (parser *Parser) Parser(tokens []token.Token) {
 func (parser *Parser) Parse() (ast.Expr, error) {
 	expr, err := parser.Expression()
 	if err != nil {
+		fmt.Print(fmt.Errorf("%w", err))
 		return nil, err
 	}
 	return expr, nil
@@ -154,12 +155,11 @@ func (parser *Parser) Primary() (ast.Expr, error) {
 	default:
 		// We probaby don't want to panic here because we are syncing the parser
 		peek := parser.peek()
-		previous := parser.previous()
 		return nil, errors.ExecutionError{
 			Type:    errors.PARSER_ERROR,
 			Line:    peek.Line,
-			Where:   "",
-			Message: fmt.Sprintf("Unexpected token '%v' after '%v'\n", peek.Lexeme, previous.Lexeme),
+			Where:   peek.Char,
+			Message: fmt.Sprintf("Unexpected token '%v'", peek.Lexeme),
 		}
 
 	}
@@ -220,7 +220,7 @@ func (parser *Parser) consume(type_ token.TokenType, message string) (token.Toke
 	return token.Token{}, errors.ExecutionError{
 		Type:    errors.PARSER_ERROR,
 		Line:    parser.peek().Line,
-		Where:   parser.peek().Lexeme,
+		Where:   parser.peek().Char,
 		Message: message,
 	}
 }
