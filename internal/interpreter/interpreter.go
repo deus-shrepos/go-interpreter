@@ -13,17 +13,19 @@ import (
 The job of the interpreter (runtime evaluation) is to take a tree to its source and evaluate it literals
 */
 
-type Interpreter struct {
-	Error errors.ExecutionError
-}
+type Interpreter struct{}
 
-func (i *Interpreter) Interpret(expr ast.Expr) error {
+func (i *Interpreter) Interpret(expr ast.Expr, printExpression bool) {
+	if expr == nil {
+		return
+	}
 	value, err := i.eval(expr)
 	if err != nil {
-		_ = fmt.Errorf("Error: %v", err)
+		fmt.Println(fmt.Errorf("error: %v", err))
 	}
-	fmt.Printf(stringify(value))
-	return nil
+	if printExpression {
+		fmt.Print(stringify(value))
+	}
 }
 
 func (i *Interpreter) VisitLiteral(expr ast.Literal) (any, error) {
@@ -40,7 +42,7 @@ func (i *Interpreter) VisitUnary(expr ast.Unary) (any, error) {
 	default:
 		return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
 			Line:    expr.Operator.Line,
-			Where:   expr.Operator.Lexeme,
+			Where:   expr.Operator.Char,
 			Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 	}
 }
@@ -54,110 +56,90 @@ func (i *Interpreter) eval(expr ast.Expr) (any, error) {
 }
 
 func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
-	right, _ := i.eval(expr.Right)
 	left, _ := i.eval(expr.Left)
-
+	right, _ := i.eval(expr.Right)
 	switch expr.Operator.Type {
 	case token.MINUS:
 		return right.(float64) - left.(float64), nil
 	case token.PLUS:
-		switch rightValue := right.(type) {
-		case float64:
-			leftValue, ok := left.(float64)
-			if !ok {
-				return nil,
-					errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-						Line:    expr.Operator.Line,
-						Where:   expr.Operator.Lexeme,
-						Message: fmt.Sprintf("'%v' operand must be number", leftValue)}
+		// Check if the operands are strings
+		if leftValue, ok := left.(string); ok {
+			if rightValue, ok := right.(string); ok {
+				return rightValue + leftValue, nil
 			}
-			return rightValue + leftValue, nil
-		case string:
-			return rightValue + left.(string), nil
-		default:
-			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-				Line:    expr.Operator.Line,
-				Where:   expr.Operator.Lexeme,
-				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
+		if rightValue, ok := right.(string); ok {
+			// We know that the right is a string, so we need to check if the left is a number
+			err := checkIfNumber(left, expr.Operator)
+			if err != nil {
+				return nil, err
+			}
+			return rightValue + fmt.Sprintf("%v", left.(float64)), nil
+		}
+		err := checkIfNumbers(left, right, expr.Operator)
+		if err != nil {
+			return nil, err
+		}
+		return right.(float64) + left.(float64), nil
+
 	case token.SLASH:
-		switch rightValue := right.(type) {
-		case float64:
-			return rightValue / left.(float64), nil
-		default:
-			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-				Line:    expr.Operator.Line,
-				Where:   expr.Operator.Lexeme,
-				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
+		err := checkIfNumbers(left, right, expr.Operator)
+		if err != nil {
+			return nil, err
 		}
+		return right.(float64) / left.(float64), nil
 	case token.STAR:
-		switch rightValue := right.(type) {
-		case float64:
-			return rightValue * left.(float64), nil
-		default:
-			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-				Line:    expr.Operator.Line,
-				Where:   expr.Operator.Lexeme,
-				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
+		err := checkIfNumbers(left, right, expr.Operator)
+		if err != nil {
+			return nil, err
 		}
+		return right.(float64) * left.(float64), nil
 	case token.GREATER:
-		switch rightValue := right.(type) {
-		case float64:
-			return rightValue > left.(float64), nil
-		case string:
-			return rightValue > left.(string), nil
-		default:
-			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-				Line:    expr.Operator.Line,
-				Where:   expr.Operator.Lexeme,
-				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
+		err := checkIfNumbers(left, right, expr.Operator)
+		if err != nil {
+			return nil, err
 		}
+		return right.(float64) > left.(float64), nil
 	case token.GREATER_EQUAL:
-		switch rightValue := right.(type) {
-		case float64:
-			return rightValue >= left.(float64), nil
-		case string:
-			return rightValue >= left.(string), nil
+		err := checkIfNumbers(left, right, expr.Operator)
+		if err != nil {
+			return nil, err
 		}
+		return right.(float64) >= left.(float64), nil
 	case token.LESS:
-		switch rightValue := right.(type) {
-		case float64:
-			return rightValue < left.(float64), nil
-		case string:
-			return rightValue < left.(string), nil
+		err := checkIfNumbers(left, right, expr.Operator)
+		if err != nil {
+			return nil, err
 		}
+		return right.(float64) < left.(float64), nil
 	case token.LESS_EQUAL:
-		switch rightValue := right.(type) {
-		case float64:
-			return rightValue <= left.(float64), nil
-		case string:
-			return rightValue <= left.(string), nil
+		err := checkIfNumbers(left, right, expr.Operator)
+		if err != nil {
+			return nil, err
 		}
+		return right.(float64) <= left.(float64), nil
 	case token.BANG_EQUAL:
 		return !isEqual(left, right), nil
 	case token.EQUAL_EQUAL:
 		return isEqual(left, right), nil
 	case token.AND:
-		switch rightValue := right.(type) {
-		case bool:
-			return rightValue && left.(bool), nil
-		default:
-			return nil,
-				errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-					Line:    expr.Operator.Line,
-					Where:   expr.Operator.Lexeme,
-					Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
+		err := checkIfBooleans(left, right, expr.Operator)
+		if err != nil {
+			return nil, err
 		}
+		return left.(bool) && right.(bool), nil
+	case token.OR:
+		err := checkIfBooleans(left, right, expr.Operator)
+		if err != nil {
+			return nil, err
+		}
+		return left.(bool) || right.(bool), nil
 	default:
 		return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
 			Line:    expr.Operator.Line,
-			Where:   expr.Operator.Lexeme,
+			Where:   expr.Operator.Char,
 			Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 	}
-	return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-		Line:    expr.Operator.Line,
-		Where:   expr.Operator.Lexeme,
-		Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 }
 
 func isEqual(left, right any) bool {
@@ -185,10 +167,52 @@ func stringify(object any) string {
 	value, isDouble := object.(float64)
 	if isDouble {
 		valueString := fmt.Sprint(value)
-		if strings.HasSuffix(valueString, ".0") {
-			valueString = valueString[0 : len(valueString)-2]
-		}
+		valueString = strings.TrimSuffix(valueString, ".0")
 		return valueString
 	}
 	return fmt.Sprintf("%v", object)
+}
+
+func checkIfNumber(object any, operator token.Token) error {
+	if _, ok := object.(float64); !ok {
+		return errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+			Line:    operator.Line,
+			Where:   operator.Char,
+			Message: fmt.Sprintf("'%v' Operand must be a number", object)}
+	}
+	return nil
+}
+
+func checkIfBoolean(object any, operator token.Token) error {
+	if _, ok := object.(bool); !ok {
+		return errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+			Line:    operator.Line,
+			Where:   operator.Char,
+			Message: fmt.Sprintf("'%v' Operand must be a boolean", object)}
+	}
+	return nil
+}
+
+func checkIfBooleans(left, right any, operator token.Token) error {
+	err := checkIfBoolean(left, operator)
+	if err != nil {
+		return err
+	}
+	err = checkIfBoolean(right, operator)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkIfNumbers(left, right any, operator token.Token) error {
+	err := checkIfNumber(left, operator)
+	if err != nil {
+		return err
+	}
+	err = checkIfNumber(right, operator)
+	if err != nil {
+		return err
+	}
+	return nil
 }
