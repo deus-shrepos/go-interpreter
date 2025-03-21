@@ -54,34 +54,24 @@ func (scanner *TokenScanner) ScanToken() error {
 	switch c {
 	case "(":
 		scanner.AddToken(token.LEFT_PAREN)
-		break
 	case ")":
 		scanner.AddToken(token.RIGHT_PAREN)
-		break
 	case "{":
 		scanner.AddToken(token.LEFT_BRACE)
-		break
 	case "}":
 		scanner.AddToken(token.RIGHT_BRACE)
-		break
 	case ",":
 		scanner.AddToken(token.COMMA)
-		break
 	case ".":
 		scanner.AddToken(token.DOT)
-		break
 	case "-":
 		scanner.AddToken(token.MINUS)
-		break
 	case "+":
 		scanner.AddToken(token.PLUS)
-		break
 	case ";":
 		scanner.AddToken(token.SEMICOLON)
-		break
 	case "*":
 		scanner.AddToken(token.STAR)
-		break
 	case "!":
 		bang := token.BANG
 		if scanner.match("=") {
@@ -94,21 +84,18 @@ func (scanner *TokenScanner) ScanToken() error {
 			equal = token.EQUAL_EQUAL
 		}
 		scanner.AddToken(equal)
-		break
 	case "<":
 		lessEqual := token.LESS
 		if scanner.match("=") {
 			lessEqual = token.LESS_EQUAL
 		}
 		scanner.AddToken(lessEqual)
-		break
 	case ">":
 		greaterEqual := token.GREATER
 		if scanner.match("=") {
 			greaterEqual = token.GREATER_EQUAL
 		}
 		scanner.AddToken(greaterEqual)
-		break
 	case "/":
 		if scanner.match("/") {
 			// This is a comment - keep going until you reach at the end of the line
@@ -118,17 +105,14 @@ func (scanner *TokenScanner) ScanToken() error {
 		} else {
 			scanner.AddToken(token.SLASH)
 		}
-		break
 	case " ":
 	case "\r":
 	case "\t":
 		break
 	case "\n":
 		scanner.Line++
-		break
 	case "\"":
 		scanner.string()
-		break
 	default:
 		if isDigit(c) {
 			scanner.number()
@@ -137,10 +121,9 @@ func (scanner *TokenScanner) ScanToken() error {
 		} else {
 			return errors.ExecutionError{Type: errors.SCANNER_ERROR,
 				Line:    scanner.Line,
-				Where:   "Scanner",
+				Where:   scanner.Current,
 				Message: "Unexpected Error"}
 		}
-		break
 	}
 	return nil
 }
@@ -155,7 +138,7 @@ func (scanner *TokenScanner) string() error {
 		if scanner.isAtEnd() {
 			return errors.ExecutionError{Type: errors.SCANNER_ERROR,
 				Line:    scanner.Line,
-				Where:   string(scanner.Source[scanner.Current]),
+				Where:   scanner.Current,
 				Message: "Unterminated string",
 			}
 		}
@@ -240,6 +223,7 @@ func (scanner *TokenScanner) addToken(tokenType token.TokenType, literal any) {
 		Lexeme:  text,
 		Literal: literal,
 		Line:    scanner.Line,
+		Char:    scanner.Start,
 	})
 
 }
