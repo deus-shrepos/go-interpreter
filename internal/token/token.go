@@ -13,14 +13,7 @@ type Token struct {
 	Lexeme  string
 	Literal any
 	Line    int
-}
-
-// Init initializes a Token with the given type, lexeme, literal value, and line number where it appears.
-func (token *Token) Init(tokenType TokenType, lexeme string, literal any, line int) {
-	token.Type = tokenType
-	token.Lexeme = lexeme
-	token.Literal = literal
-	token.Line = line
+	Char    int
 }
 
 // ToString This convert the token to a representation; something like this:  1 + variable + VAR
@@ -33,6 +26,6 @@ func (token *Token) ToString() string {
 
 // String This will be used by the fmt package to print out to the standard out using this formatted string
 func (token Token) String() string {
-	return fmt.Sprintf("Token<Type=%v, Lexeme=%v, Literal=%v, Line=%v>",
-		token.Type, token.Lexeme, token.Literal, token.Line) //nolint:lll
+	return fmt.Sprintf("Token<Type=%v, Lexeme=%v, Literal=%v, Line=%v, Char=%v>",
+		token.Type, token.Lexeme, token.Literal, token.Line, token.Char) //nolint:lll
 }
