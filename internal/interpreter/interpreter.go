@@ -20,7 +20,7 @@ type Interpreter struct {
 func (i *Interpreter) Interpret(expr ast.Expr) error {
 	value, err := i.eval(expr)
 	if err != nil {
-		return err
+		_ = fmt.Errorf("Error: %v", err)
 	}
 	fmt.Printf(stringify(value))
 	return nil
@@ -39,7 +39,8 @@ func (i *Interpreter) VisitUnary(expr ast.Unary) (any, error) {
 		return !IsTruthy(right), nil
 	default:
 		return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-			Op:      expr.Operator,
+			Line:    expr.Operator.Line,
+			Where:   expr.Operator.Lexeme,
 			Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 	}
 }
@@ -66,7 +67,8 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 			if !ok {
 				return nil,
 					errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-						Op:      expr.Operator,
+						Line:    expr.Operator.Line,
+						Where:   expr.Operator.Lexeme,
 						Message: fmt.Sprintf("'%v' operand must be number", leftValue)}
 			}
 			return rightValue + leftValue, nil
@@ -74,7 +76,8 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 			return rightValue + left.(string), nil
 		default:
 			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-				Op:      expr.Operator,
+				Line:    expr.Operator.Line,
+				Where:   expr.Operator.Lexeme,
 				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
 	case token.SLASH:
@@ -83,7 +86,8 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 			return rightValue / left.(float64), nil
 		default:
 			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-				Op:      expr.Operator,
+				Line:    expr.Operator.Line,
+				Where:   expr.Operator.Lexeme,
 				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
 	case token.STAR:
@@ -92,7 +96,8 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 			return rightValue * left.(float64), nil
 		default:
 			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-				Op:      expr.Operator,
+				Line:    expr.Operator.Line,
+				Where:   expr.Operator.Lexeme,
 				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
 	case token.GREATER:
@@ -103,7 +108,8 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 			return rightValue > left.(string), nil
 		default:
 			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-				Op:      expr.Operator,
+				Line:    expr.Operator.Line,
+				Where:   expr.Operator.Lexeme,
 				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
 	case token.GREATER_EQUAL:
@@ -138,16 +144,19 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 		default:
 			return nil,
 				errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-					Op:      expr.Operator,
+					Line:    expr.Operator.Line,
+					Where:   expr.Operator.Lexeme,
 					Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
 	default:
 		return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-			Op:      expr.Operator,
+			Line:    expr.Operator.Line,
+			Where:   expr.Operator.Lexeme,
 			Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 	}
 	return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
-		Op:      expr.Operator,
+		Line:    expr.Operator.Line,
+		Where:   expr.Operator.Lexeme,
 		Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 }
 
