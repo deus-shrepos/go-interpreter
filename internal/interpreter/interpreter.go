@@ -14,7 +14,7 @@ The job of the interpreter (runtime evaluation) is to take a tree to its source 
 */
 
 type Interpreter struct {
-	Error errors.Error
+	Error errors.ExecutionError
 }
 
 func (i *Interpreter) Interpret(expr ast.Expr) error {
@@ -26,11 +26,11 @@ func (i *Interpreter) Interpret(expr ast.Expr) error {
 	return nil
 }
 
-func (i *Interpreter) VisitLiteral(expr ast.Literal) (interface{}, error) {
+func (i *Interpreter) VisitLiteral(expr ast.Literal) (any, error) {
 	return expr.Value, nil
 }
 
-func (i *Interpreter) VisitUnary(expr ast.Unary) (interface{}, error) {
+func (i *Interpreter) VisitUnary(expr ast.Unary) (any, error) {
 	right, _ := i.eval(expr.Right) // POST ORDER EVALUATION
 	switch expr.Operator.Type {
 	case token.MINUS:
@@ -38,19 +38,21 @@ func (i *Interpreter) VisitUnary(expr ast.Unary) (interface{}, error) {
 	case token.BANG:
 		return !IsTruthy(right), nil
 	default:
-		return nil, fmt.Errorf("%s is not a valid operator", expr.Operator.Lexeme)
+		return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+			Op:      expr.Operator,
+			Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 	}
 }
 
-func (i *Interpreter) VisitGrouping(expr ast.Grouping) (interface{}, error) {
+func (i *Interpreter) VisitGrouping(expr ast.Grouping) (any, error) {
 	return i.eval(expr.Expression)
 }
 
-func (i *Interpreter) eval(expr ast.Expr) (interface{}, error) {
+func (i *Interpreter) eval(expr ast.Expr) (any, error) {
 	return expr.Accept(i)
 }
 
-func (i *Interpreter) VisitBinary(expr ast.Binary) (interface{}, error) {
+func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 	right, _ := i.eval(expr.Right)
 	left, _ := i.eval(expr.Left)
 
@@ -62,27 +64,36 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (interface{}, error) {
 		case float64:
 			leftValue, ok := left.(float64)
 			if !ok {
-				return nil, fmt.Errorf("'%v' operand must be number", leftValue)
+				return nil,
+					errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+						Op:      expr.Operator,
+						Message: fmt.Sprintf("'%v' operand must be number", leftValue)}
 			}
-			return rightValue + left.(float64), nil
+			return rightValue + leftValue, nil
 		case string:
 			return rightValue + left.(string), nil
 		default:
-			return nil, fmt.Errorf("'%v' operand must be a number or a string", rightValue)
+			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+				Op:      expr.Operator,
+				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
 	case token.SLASH:
 		switch rightValue := right.(type) {
 		case float64:
 			return rightValue / left.(float64), nil
 		default:
-			return nil, fmt.Errorf("operand must be a number", expr.Operator.Lexeme)
+			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+				Op:      expr.Operator,
+				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
 	case token.STAR:
 		switch rightValue := right.(type) {
 		case float64:
 			return rightValue * left.(float64), nil
 		default:
-			return nil, fmt.Errorf("%s is not a valid operator", expr.Operator.Lexeme)
+			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+				Op:      expr.Operator,
+				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
 	case token.GREATER:
 		switch rightValue := right.(type) {
@@ -91,7 +102,9 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (interface{}, error) {
 		case string:
 			return rightValue > left.(string), nil
 		default:
-			return nil, fmt.Errorf("%s is not a valid operator", expr.Operator.Lexeme)
+			return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+				Op:      expr.Operator,
+				Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
 	case token.GREATER_EQUAL:
 		switch rightValue := right.(type) {
@@ -123,15 +136,22 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (interface{}, error) {
 		case bool:
 			return rightValue && left.(bool), nil
 		default:
-			return nil, fmt.Errorf("%s is not a valid operator", expr.Operator.Lexeme)
+			return nil,
+				errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+					Op:      expr.Operator,
+					Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 		}
 	default:
-		return nil, fmt.Errorf("%s is not a valid operator", expr.Operator.Lexeme)
+		return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+			Op:      expr.Operator,
+			Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 	}
-	return nil, fmt.Errorf("%s is not a valid operator", expr.Operator.Lexeme)
+	return nil, errors.ExecutionError{Type: errors.RUNTIME_ERROR,
+		Op:      expr.Operator,
+		Message: fmt.Sprintf("%s is not a valid operator", expr.Operator.Lexeme)}
 }
 
-func isEqual(left, right interface{}) bool {
+func isEqual(left, right any) bool {
 	if left == nil && right == nil {
 		return true
 	}
@@ -140,7 +160,7 @@ func isEqual(left, right interface{}) bool {
 	}
 	return left == right
 }
-func IsTruthy(object interface{}) bool {
+func IsTruthy(object any) bool {
 	if object == nil {
 		return false
 	}
