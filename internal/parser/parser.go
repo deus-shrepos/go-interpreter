@@ -2,6 +2,7 @@ package parser
 
 import (
 	"Crafting-interpreters/internal/ast"
+	"Crafting-interpreters/internal/errors"
 	"Crafting-interpreters/internal/token"
 	"fmt"
 )
@@ -31,11 +32,11 @@ func (parser *Parser) Parse() (ast.Expr, error) {
 // It returns the root node of the abstract syntax tree.
 // expression -> equality
 func (parser *Parser) Expression() (ast.Expr, error) {
-	eql, err := parser.Equality()
+	eq, err := parser.Equality()
 	if err != nil {
 		return nil, err
 	}
-	return eql, nil
+	return eq, nil
 }
 
 // Equality parses an equality expression from the list of tokens.
@@ -154,7 +155,12 @@ func (parser *Parser) Primary() (ast.Expr, error) {
 		// We probaby don't want to panic here because we are syncing the parser
 		peek := parser.peek()
 		previous := parser.previous()
-		return nil, parser.ParserError(peek, fmt.Sprintf("Unexpected token '%v' found after '%s' \n", peek.Lexeme, previous.Lexeme))
+		return nil, errors.ExecutionError{
+			Type:    errors.PARSER_ERROR,
+			Line:    peek.Line,
+			Where:   "",
+			Message: fmt.Sprintf("Unexpected token '%v' after '%v'\n", peek.Lexeme, previous.Lexeme),
+		}
 
 	}
 }
@@ -204,17 +210,17 @@ func (parser *Parser) previous() token.Token {
 }
 
 // This function consumer or otherwise it throws an error
+// It consumes the token if it is of the given type.
+// If it is not, it throws an error with the given message.
+// The caller can handle the error and decide what to do with it.
 func (parser *Parser) consume(type_ token.TokenType, message string) (token.Token, error) {
 	if parser.check(type_) {
 		return parser.advance(), nil
 	}
-	err := parser.ParserError(parser.peek(), message)
-	return token.Token{}, err
-}
-
-// ParserError The function just reports and returns the error
-// The caller can handle the error and decide what to do with it
-func (parser *Parser) ParserError(token token.Token, message string) error {
-	parser.Error.ProgramError(token.Line, message)
-	return fmt.Errorf("parser Error Occurred. Exiting")
+	return token.Token{}, errors.ExecutionError{
+		Type:    errors.PARSER_ERROR,
+		Line:    parser.peek().Line,
+		Where:   parser.peek().Lexeme,
+		Message: message,
+	}
 }
