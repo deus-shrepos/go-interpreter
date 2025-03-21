@@ -143,17 +143,19 @@ func (parser *Parser) Primary() (ast.Expr, error) {
 	case parser.match(token.NUMBER, token.STRING):
 		return ast.Literal{Value: parser.previous().Literal}, nil
 	case parser.match(token.LEFT_PAREN):
-		expr, err := parser.Expression()
-		if err != nil {
-			return nil, err
+		expr, e := parser.Expression()
+		if e != nil {
+			fmt.Println(fmt.Errorf("%v", e))
 		}
-		_, err = parser.consume(token.RIGHT_PAREN, "Expect ')' after expression.")
+		_, err := parser.consume(token.RIGHT_PAREN, "Expect ')' after expression.")
 		if err != nil {
 			return nil, err
 		}
 		return ast.Grouping{Expression: expr}, nil
 	default:
 		// We probaby don't want to panic here because we are syncing the parser
+		// We will catch it in parser.match(token.LEFT_PAREN) and report it back to
+		// the stdout
 		peek := parser.peek()
 		return nil, errors.ExecutionError{
 			Type:    errors.PARSER_ERROR,
