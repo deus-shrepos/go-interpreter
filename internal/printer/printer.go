@@ -11,7 +11,8 @@ type PrintAST struct {
 	indentation int
 }
 
-// VisitBinary generates a string representation of a binary expression by recursively visiting its left, right, and operator.
+// VisitBinary generates a string representation of a binary
+// expression by recursively visiting its left, right, and operator.
 func (printer *PrintAST) VisitBinary(node ast.Binary) (interface{}, error) {
 	printer.indentation++
 	left, _ := node.Left.Accept(printer)
