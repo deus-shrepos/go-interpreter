@@ -2,109 +2,15 @@ package parser
 
 import (
 	"Crafting-interpreters/internal/ast"
-	"Crafting-interpreters/internal/errors"
 	"Crafting-interpreters/internal/token"
 	"fmt"
 )
-
-/*
-	Literals: Numbers, strings, Booleans, and nil
-	Unary expressions: A prefix ! to perform a logical not, and - to negate a number
-	Binary expressions: the infix arithmetic (+, -, #, /) and logic operators
-					(==, !=, <, <=, >, >=)
-	Parentheses: A pair of ( and a) wrapped around an expression
-
-	--------------------------------------------
-	expression -> literal
-				 | unary
-				 | binary
-				 | grouping;
-	literal    ->   NUMBER | STRING | "true" | "false" | "nil";
-	grouping   ->  "(" expression ")"
-	unary 	   ->   ( "-" | "!" ) expression;
-	binary 	   ->   expression operator expression
-	operator   -> 	"==" | "!=" | "<" | "<=" | ">" | ">=" |
-					| "+" | "-" | "*" | "/";
-
-	What about Syntactic ambiguity? How do we handle that?
-	String => 6 / 3 - 1
-		generates => T1 and T2
-					 is T1 =/= T2? It should not be the case.
-					 semantically makes a huge difference.
-					 so we ought to take care of it.
-		if syntax trees are different, therefore meaning is different.
-	Handling is as simple as defining rules for precedence and associativity
-	higher precedence -> binds tighter
-	lower  precedence -> binds less tightly
-	Associativity -> which operator to be evaluated first in the series of the
-	same operator.
-		left-associative (left-to-right) -> left to right evaluation
-			5 - 3 - 1 => (5 - 3) - 1
-		right-associative (right-to-left) -> left to right evaluation
-		 	a = b = c => a = (b = c)
-
-		----------------------------------------------
-		Name				Operators 		Associates
-		Equality			== !=			Left
-		Comparison			> >= < <=		Left
-		Term				- +				Left
-		Factor				/ * 			Left
-		Unary				! - 			Right
-
-		expression  ->
-		equality    ->
-		comparison  ->
-		term		->
-		factor 		-> factor ("/" | "*") unary | unary
-		unary 		-> ("!" | "-") unary | primary
-		primary 	-> Number | string
-
-	 	example: 1 * 2 / 3
-		we have to do left-associative parsing in this case since
-		* and / have equal precedence, and we will recurse from left to right
-		to avoid any confusion.
-
-		factor => factor "/" unary
-		factor => (factor "*" unary) "/" unary
-		factor => ( (unary "*" unary) "/" unary)
-		...
-		unary  => (((primary "*" primary) "/" primary))
-		..,
-		primary => (Number "*" Number) "/" Number
-
-		Revised:
-		expression  -> equality
-		equality    -> comparison ( "!=" | "==" ) comparison )*
-		comparison  -> term ( ( ">" | ">=" | "<" | "<=") term )*
-		term		-> factor ( ( "-" | "+" ) factor )*
-		factor 		-> unary ( ( "/" | "*") unary) *
-		unary 		-> ("!" | "-") unary | primary
-		primary 	-> Number | string | "true" | "false" | "nil" |
-						"(" expression ")"
-
-		Recursive Descent Parsing
-		-------------------------
-
-		Combinations of L & R: LL(K), LR(1), LALR, or RDP
-		It is a top-down parser as it starts from the top or the outermost
-		grammar rule ( like expression ) and works its way down into the nested
-		subexpressions before finally reaching the leaves of the syntax tree.
-
-		Grammar Notion 				Code Repr
-		-------------------------------------------------
-		Terminal 					code -> match/consume
-		Non-terminal 				call -> rule's func
-		|							if/switch
-		* or + 						while/for loop
-		?							if
-*/
 
 // Parser is a recursive descent parser for the Lox language.
 // It takes a list of tokens and produces an abstract syntax tree.
 type Parser struct {
 	Tokens  []token.Token
 	Current int
-	Error   errors.Error
 }
 
 // Parser initializes a new parser with the given list of tokens.
