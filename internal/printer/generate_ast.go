@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-var LoxGrammar = []string{
+var Grammar = []string{
 	"Binary: Left Expr,Operator internal.Token,Right Expr",
 	"Grouping: Expression Expr",
 	"Literal: Value interface{}", // TODO: enforce a type constraint. Obviously, I don't want just any type.
@@ -21,7 +21,7 @@ func GenerateAst(args ...string) error {
 	}
 	outputDir := args[0]
 	// types => (arg type)
-	err := defineAst(outputDir, "Expr", LoxGrammar)
+	err := defineAst(outputDir, "Expr", Grammar)
 	if err != nil {
 		return err
 	}
