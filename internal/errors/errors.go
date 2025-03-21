@@ -10,7 +10,7 @@ type ExecutionErrorType string
 const (
 	RUNTIME_ERROR ExecutionErrorType = "Runtime Error"
 	PROGRAM_ERROR ExecutionErrorType = "Program Error"
-	PARSER_ERROR  ExecutionErrorType = "Parser Error"
+	PARSER_ERROR  ExecutionErrorType = "Syntax Error"
 	SCANNER_ERROR ExecutionErrorType = "Scanner Error"
 )
 
@@ -21,11 +21,11 @@ func (s ExecutionErrorType) String() string {
 type ExecutionError struct {
 	Type    ExecutionErrorType
 	Line    int
-	Where   string
+	Where   int
 	Message string
 }
 
 // Report to user where and why that thing went wrong
 func (err ExecutionError) Error() string {
-	return fmt.Sprintf("%s [line %d] %s: %s", err.Type, err.Line, err.Where, err.Message)
+	return fmt.Sprintf("%s [line %d] at %v: %s", err.Type, err.Line, err.Where, err.Message)
 }
