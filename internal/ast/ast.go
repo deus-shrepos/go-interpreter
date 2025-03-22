@@ -1,18 +1,18 @@
 package ast
 
-import (
-	"Crafting-interpreters/internal/token"
-)
+import "Crafting-interpreters/internal/token"
 
 type Visitor interface {
 	VisitBinary(node Binary) (any, error)
 	VisitGrouping(node Grouping) (any, error)
 	VisitLiteral(node Literal) (any, error)
 	VisitUnary(node Unary) (any, error)
+	VisitStmt(node Stmt) (any, error)
+	VisitPrint(node Print) (any, error)
 }
 
 type Expr interface {
-	Accept(visitor Visitor) (any, error)
+	Accept(vistior Visitor) (any, error)
 }
 
 type Binary struct {
@@ -22,7 +22,7 @@ type Binary struct {
 }
 
 func (node Binary) Accept(visitor Visitor) (any, error) {
-	return visitor.VisitBinary(node) //nolint:wrapcheck
+	return visitor.VisitBinary(node)
 }
 
 type Grouping struct {
@@ -30,7 +30,7 @@ type Grouping struct {
 }
 
 func (node Grouping) Accept(visitor Visitor) (any, error) {
-	return visitor.VisitGrouping(node) //nolint:wrapcheck
+	return visitor.VisitGrouping(node)
 }
 
 type Literal struct {
@@ -38,14 +38,30 @@ type Literal struct {
 }
 
 func (node Literal) Accept(visitor Visitor) (any, error) {
-	return visitor.VisitLiteral(node) //nolint:wrapcheck
+	return visitor.VisitLiteral(node)
 }
 
 type Unary struct {
-	Right    Expr
 	Operator token.Token
+	Right    Expr
 }
 
 func (node Unary) Accept(visitor Visitor) (any, error) {
-	return visitor.VisitUnary(node) //nolint:wrapcheck
+	return visitor.VisitUnary(node)
+}
+
+type Stmt struct {
+	Expression Expr
+}
+
+func (node Stmt) Accept(visitor Visitor) (any, error) {
+	return visitor.VisitStmt(node)
+}
+
+type Print struct {
+	Expression Expr
+}
+
+func (node Print) Accept(visitor Visitor) (any, error) {
+	return visitor.VisitPrint(node)
 }
