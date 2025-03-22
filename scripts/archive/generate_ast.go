@@ -10,8 +10,10 @@ import (
 var Grammar = []string{
 	"Binary: Left Expr,Operator internal.Token,Right Expr",
 	"Grouping: Expression Expr",
-	"Literal: Value interface{}", // TODO: enforce a type constraint. Obviously, I don't want just any type.
+	"Literal: Value any", // TODO: enforce a type constraint. Obviously, I don't want just any type.
 	"Unary: Operator internal.Token,Right Expr",
+	"stmt: Expression Expr",
+	"Print: Expression Expr",
 }
 
 // GenerateAst This function will generate an AST .go file for each operation
@@ -41,7 +43,7 @@ func defineAst(outputDir string, baseName string, types []string) error {
 	writer := bufio.NewWriter(file)
 	_, _ = writer.WriteString("package ast") // TODO: do I want to keep it as main?
 	_, _ = writer.WriteString("\n\n")
-	_, _ = writer.WriteString("import \"crafting-interpreters/internal\"")
+	_, _ = writer.WriteString("import \"crafting-interpreters/internal/token\"")
 	_, _ = writer.WriteString("\n\n")
 	_, _ = writer.WriteString(strings.Join([]string{"type", " ", baseName, " ", "interface{}"}, ""))
 	_, _ = writer.WriteString("\n")
@@ -59,19 +61,19 @@ func defineAst(outputDir string, baseName string, types []string) error {
 func defineType(writer *bufio.Writer, structName, structFields string) {
 	_, _ = writer.WriteString(fmt.Sprintf("type %s struct {\n\t", structName))
 	_, _ = writer.WriteString(strings.Join(strings.Split(structFields, ","), "\n\t"))
-	_, _ = writer.WriteString(fmt.Sprintf("\n}\n"))
-	_, _ = writer.WriteString(fmt.Sprintf("func (node %s) Accept(visitor Visitor) interface{} {\n\t", structName))
+	_, _ = writer.WriteString("\n}\n")
+	_, _ = writer.WriteString(fmt.Sprintf("func (node %s) Accept(visitor Visitor) (any error) {\n\t", structName))
 	_, _ = writer.WriteString(fmt.Sprintf("return visitor.Visit%s(node)\n}\n", structName))
 	_, _ = writer.WriteString("\n")
 }
 
 // defineVisitor generates a Visitor interface for a given struct name and its fields and writes it to the provided writer.
 func defineVisitor(writer *bufio.Writer, structName string, structFields []string) {
-	_, _ = writer.WriteString(fmt.Sprintf("type Visitor interface{\n\t"))
+	_, _ = writer.WriteString("type Visitor interface{\n\t")
 	for _, type_ := range structFields {
 		typeName := strings.Trim(strings.Split(type_, ":")[0], " ")
-		_, _ = writer.WriteString(fmt.Sprintf("Visit%s(node %s) interface{}", strings.Trim(strings.Split(type_, ":")[0], " "), typeName))
-		_, _ = writer.WriteString(fmt.Sprintf("\n\t"))
+		_, _ = writer.WriteString(fmt.Sprintf("Visit%s(node %s) (any, error)", strings.Trim(strings.Split(type_, ":")[0], " "), typeName))
+		_, _ = writer.WriteString("\n\t")
 	}
-	_, _ = writer.WriteString(fmt.Sprintf("\n}\n"))
+	_, _ = writer.WriteString("\n}\n")
 }
