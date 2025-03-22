@@ -14,7 +14,7 @@ Grammer: List[str] = [
 	"Grouping: Expression Expr",
 	"Literal: Value any",
 	"Unary: Operator token.Token,Right Expr",
-	"stmt: Expression Expr",
+	"Stmt: Expression Expr",
 	"Print: Expression Expr",
     # And more to come soon...
 ]
@@ -57,9 +57,8 @@ def define_ast(output_dir: os.PathLike, base_name: str, production_rules: List[s
         None
 
     """
-    path: str = os.path.join(os.getcwd(), f"{output_dir}/ast.go")
-    if not os.path.exists(path):
-        print("No path found!")
+    path: str = os.path.join(f"{output_dir}/ast.go")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     
     with open(path, "w") as file:
         file.write("package ast \n\n")
@@ -72,7 +71,7 @@ def define_ast(output_dir: os.PathLike, base_name: str, production_rules: List[s
             struct_name = rule.split(":")[0].lstrip()
             struct_fields = rule.split(":")[1].lstrip() 
             define_type(file, struct_name, struct_fields)
-    
+
     print(f"Generate AST file in {path}")
 
 
@@ -86,6 +85,7 @@ def define_type(file: TextIOWrapper, struct_name: str, struct_field: str) -> Non
 
     Returns:
         None
+        
     """
     file.write(f"type {struct_name} struct {{ \n")
     file.write("\n\t".join(s for s in struct_field.split(",")))
