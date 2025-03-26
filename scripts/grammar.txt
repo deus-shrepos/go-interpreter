@@ -1,0 +1,7 @@
+# AST structs
+Binary   -> Left:Expr | Operator:token.Token | Right:Expr
+Grouping -> Expression:Expr
+Literal  -> Value:any
+Unary    -> Operator:token.Token | Right:Expr
+Stmt     -> Expression:Expr
+Print    -> Expression:Expr
