@@ -5,7 +5,7 @@ A utility script for generating Abstract Syntax Tree (AST) definitions in Go for
 It automates the creation of Go structs, interfaces, and visitor patterns based on a predefined grammar.
 
 Usage:
-    python generate_ast.py --path ./output
+    python generate_ast.py --ast <path> --outpath <output-path>
 """
 
 import os
@@ -82,12 +82,12 @@ def parse_ast_lines(line: str) -> ASTStruct:
 
     Example:
         Input:
-            "Node -> name:str | value:int"
+            "Node -> name:string | value:int"
         Output:
             ASTStruct(
                 name="Node",
                 fields=[
-                    ASTStructField(name="name", type="str"),
+                    ASTStructField(name="name", type="string"),
                     ASTStructField(name="value", type="int")
                 ]
             )
@@ -122,7 +122,6 @@ def generate_ast(ast_path: os.PathLike | str, output_path: os.PathLike | str) ->
         print("Usage: python -m generate_ast <ast grammar path> <output directoy>")
         raise ValueError()
     ast_grammar = load_ast_grammar(ast_path)
-    print(ast_grammar)
     define_ast(output_path, "Expr", ast_grammar)
         
 
@@ -205,7 +204,7 @@ def define_visitor(file: TextIOWrapper, structs: List[ASTStruct]) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AST Generator")
     parser.add_argument("-a", "--ast", help="ast grammar file", type=str, required=True)
-    parser.add_argument('-p', '--path', help="file path to store the ast.go", type=str, required=True)
+    parser.add_argument('-p', '--outpath', help="file path to store the ast.go", type=str, required=True)
     args = parser.parse_args()
-    generate_ast(ast_path=args.ast, output_path=args.path)
+    generate_ast(ast_path=args.ast, output_path=args.outpath)
     subprocess.run(["gofmt", "-w", args.path])
