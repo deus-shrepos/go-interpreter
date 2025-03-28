@@ -1,9 +1,10 @@
 package printer
 
 import (
-	"Crafting-interpreters/internal/ast"
 	"fmt"
 	"strings"
+
+	"github.com/go-interpreter/internal/ast"
 )
 
 // PrintAST is a visitor implementation for converting abstract syntax trees into their string representation.

@@ -1,11 +1,12 @@
 package main
 
 import (
-	"Crafting-interpreters/internal/interpreter"
-	"Crafting-interpreters/internal/parser"
-	"Crafting-interpreters/internal/printer"
-	"Crafting-interpreters/internal/scanner"
 	"fmt"
+
+	"github.com/go-interpreter/internal/interpreter"
+	"github.com/go-interpreter/internal/parser"
+	"github.com/go-interpreter/internal/printer"
+	"github.com/go-interpreter/internal/scanner"
 )
 
 func main() {

@@ -1,14 +1,12 @@
 package ast
 
-import "Crafting-interpreters/internal/token"
+import "github.com/go-interpreter/internal/token"
 
 type Visitor interface {
 	VisitBinary(node Binary) (any, error)
 	VisitGrouping(node Grouping) (any, error)
 	VisitLiteral(node Literal) (any, error)
 	VisitUnary(node Unary) (any, error)
-	VisitStmt(node Stmt) (any, error)
-	VisitPrint(node Print) (any, error)
 }
 
 type Expr interface {

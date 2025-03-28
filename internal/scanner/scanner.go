@@ -1,9 +1,10 @@
 package scanner
 
 import (
-	"Crafting-interpreters/internal/errors"
-	"Crafting-interpreters/internal/token"
 	"strconv"
+
+	"github.com/go-interpreter/internal/errors"
+	"github.com/go-interpreter/internal/token"
 )
 
 /*

@@ -1,12 +1,13 @@
 package interpreter
 
 import (
-	"Crafting-interpreters/internal/ast"
-	"Crafting-interpreters/internal/errors"
-	"Crafting-interpreters/internal/token"
 	_ "errors"
 	"fmt"
 	"strings"
+
+	"github.com/go-interpreter/internal/ast"
+	"github.com/go-interpreter/internal/errors"
+	"github.com/go-interpreter/internal/token"
 )
 
 /*

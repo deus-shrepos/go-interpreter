@@ -1,11 +1,13 @@
 package repl
 
 import (
-	parser "Crafting-interpreters/internal/parser"
-	"Crafting-interpreters/internal/printer"
-	"Crafting-interpreters/internal/scanner"
 	"fmt"
 	"os"
+
+	"github.com/go-interpreter/internal/printer"
+	"github.com/go-interpreter/internal/scanner"
+
+	parser "github.com/go-interpreter/internal/parser"
 )
 
 type Repl struct {

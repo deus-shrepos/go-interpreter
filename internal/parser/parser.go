@@ -1,10 +1,11 @@
 package parser
 
 import (
-	"Crafting-interpreters/internal/ast"
-	"Crafting-interpreters/internal/errors"
-	"Crafting-interpreters/internal/token"
 	"fmt"
+
+	"github.com/go-interpreter/internal/ast"
+	"github.com/go-interpreter/internal/errors"
+	"github.com/go-interpreter/internal/token"
 )
 
 // Parser is a recursive descent parser for the Lox language.
