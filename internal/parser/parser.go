@@ -17,17 +17,60 @@ type Parser struct {
 
 // Parser initializes a new parser with the given list of tokens.
 func (parser *Parser) Parser(tokens []token.Token) {
+	// Insert statement Array
 	parser.Tokens = tokens
 	parser.Current = 0
 }
 
-func (parser *Parser) Parse() (ast.Expr, error) {
+func (parser *Parser) Parse() ([]ast.Stmt, error) {
+	var statements []ast.Stmt
+	for !parser.isAtEnd() {
+		statement, err := parser.Statement()
+		if err != nil {
+			fmt.Print(fmt.Errorf("%v", err))
+			// return nil, err
+		}
+		statements = append(statements, statement)
+	}
+
+	return statements, nil
+}
+
+func (parser *Parser) _Parse() (ast.Expr, error) {
 	expr, err := parser.Expression()
 	if err != nil {
 		fmt.Print(fmt.Errorf("%w", err))
 		return nil, err
 	}
 	return expr, nil
+}
+
+// PrintStatement parses a print statement from the list of tokens.
+func (parser *Parser) Statement() (ast.Stmt, error) {
+	if parser.match(token.PRINT) {
+		printStatment, err := parser.PrintStatement()
+		if err != nil {
+			return nil, err
+		}
+		return printStatment, nil
+	}
+	// It must be an expression statement
+	expressionStmt, err := parser.Expression()
+	if err != nil {
+		return nil, err
+	}
+	return ast.ExpressionStmt{Expression: expressionStmt}, nil
+}
+
+// PrintStatement parses a print statement from the list of tokens.
+func (parser *Parser) PrintStatement() (ast.Stmt, error) {
+	value, err := parser.Expression()
+	if err != nil {
+		return nil, err
+	}
+	parser.consume(token.SEMICOLON, "Expect ';' after value.")
+	return ast.PrintStmt{Expression: value}, nil
+
 }
 
 // Expression parses an expression from the list of tokens.

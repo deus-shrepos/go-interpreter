@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/go-interpreter/internal/printer"
 	"github.com/go-interpreter/internal/scanner"
 
 	parser "github.com/go-interpreter/internal/parser"
@@ -49,6 +48,7 @@ func (repl *Repl) run(tokenScanner scanner.TokenScanner) {
 	if repl.HadError {
 		return
 	}
-	astPrinter := printer.PrintAST{}
-	astPrinter.Print(expr)
+	fmt.Print(expr) // for now
+	// astPrinter := printer.PrintAST{}
+	// astPrinter.Print(expr)
 }

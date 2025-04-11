@@ -16,16 +16,15 @@ The job of the interpreter (runtime evaluation) is to take a tree to its source 
 
 type Interpreter struct{}
 
-func (i *Interpreter) Interpret(expr ast.Expr, printExpression bool) {
-	if expr == nil {
+func (i *Interpreter) Interpret(stmts []ast.Stmt) {
+	if len(stmts) == 0 {
 		return
 	}
-	value, err := i.eval(expr)
-	if err != nil {
-		fmt.Println(fmt.Errorf("error: %v", err))
-	}
-	if printExpression {
-		fmt.Print(stringify(value))
+	for _, statememnt := range stmts {
+		_, err := i.exec(statememnt) // WE DO NOT EVAL STATMENTS, WE EXECUTE THEM
+		if err != nil {
+			fmt.Println(fmt.Errorf("error: %v", err))
+		}
 	}
 }
 
@@ -48,12 +47,27 @@ func (i *Interpreter) VisitUnary(expr ast.Unary) (any, error) {
 	}
 }
 
+func (i *Interpreter) VisitExpressionStmt(stmt ast.ExpressionStmt) (any, error) {
+	return i.eval(stmt.Expression)
+}
+
+func (i *Interpreter) VisitPrintStmt(stmt ast.PrintStmt) (any, error) {
+	value, _ := i.eval(stmt.Expression)
+	fmt.Printf("%s", stringify(value))
+	return nil, nil
+}
+
 func (i *Interpreter) VisitGrouping(expr ast.Grouping) (any, error) {
-	return i.eval(expr.Expression)
+	_, _ = i.eval(expr.Expression) // DO NOT RETURN BECAUSE STATEMENTS DO PRODUCT ANYTHING
+	return nil, nil
 }
 
 func (i *Interpreter) eval(expr ast.Expr) (any, error) {
 	return expr.Accept(i)
+}
+
+func (i *Interpreter) exec(stmt ast.Stmt) (any, error) {
+	return stmt.Accept(i)
 }
 
 func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
