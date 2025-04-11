@@ -58,8 +58,7 @@ func (i *Interpreter) VisitPrintStmt(stmt ast.PrintStmt) (any, error) {
 }
 
 func (i *Interpreter) VisitGrouping(expr ast.Grouping) (any, error) {
-	_, _ = i.eval(expr.Expression) // DO NOT RETURN BECAUSE STATEMENTS DO PRODUCT ANYTHING
-	return nil, nil
+	return i.eval(expr.Expression)
 }
 
 func (i *Interpreter) eval(expr ast.Expr) (any, error) {
