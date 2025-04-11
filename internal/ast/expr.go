@@ -2,7 +2,7 @@ package ast
 
 import "github.com/go-interpreter/internal/token"
 
-type Visitor interface {
+type ExprVisitor interface {
 	VisitBinary(node Binary) (any, error)
 	VisitGrouping(node Grouping) (any, error)
 	VisitLiteral(node Literal) (any, error)
@@ -10,7 +10,7 @@ type Visitor interface {
 }
 
 type Expr interface {
-	Accept(vistior Visitor) (any, error)
+	Accept(vistior ExprVisitor) (any, error)
 }
 
 type Binary struct {
@@ -19,7 +19,7 @@ type Binary struct {
 	Right    Expr
 }
 
-func (node Binary) Accept(visitor Visitor) (any, error) {
+func (node Binary) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitBinary(node)
 }
 
@@ -27,7 +27,7 @@ type Grouping struct {
 	Expression Expr
 }
 
-func (node Grouping) Accept(visitor Visitor) (any, error) {
+func (node Grouping) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitGrouping(node)
 }
 
@@ -35,7 +35,7 @@ type Literal struct {
 	Value any
 }
 
-func (node Literal) Accept(visitor Visitor) (any, error) {
+func (node Literal) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitLiteral(node)
 }
 
@@ -44,22 +44,6 @@ type Unary struct {
 	Right    Expr
 }
 
-func (node Unary) Accept(visitor Visitor) (any, error) {
+func (node Unary) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitUnary(node)
-}
-
-type Stmt struct {
-	Expression Expr
-}
-
-func (node Stmt) Accept(visitor Visitor) (any, error) {
-	return visitor.VisitStmt(node)
-}
-
-type Print struct {
-	Expression Expr
-}
-
-func (node Print) Accept(visitor Visitor) (any, error) {
-	return visitor.VisitPrint(node)
 }
