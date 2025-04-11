@@ -68,7 +68,10 @@ func (parser *Parser) PrintStatement() (ast.Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-	parser.consume(token.SEMICOLON, "Expect ';' after value.")
+	_, err = parser.consume(token.SEMICOLON, "Expect ';' after value.")
+	if err != nil {
+		return nil, err
+	}
 	return ast.PrintStmt{Expression: value}, nil
 
 }
