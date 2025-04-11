@@ -10,6 +10,7 @@ Usage:
 
 import os
 import subprocess
+from glob import glob
 import argparse
 from dataclasses import dataclass
 from typing import List
@@ -104,7 +105,7 @@ def parse_ast_lines(line: str) -> ASTStruct:
         struct_fields.append(ASTStructField(field_name, field_type))
     return ASTStruct(name=struct, fields=struct_fields)
 
-def generate_ast(ast_path: os.PathLike | str, output_path: os.PathLike | str) -> None:
+def generate_ast(output_path: os.PathLike | str) -> None:
     """Generate an Abstract Syntax Tree (AST) Go file in the specified location.
 
     This function takes a single argument specifying the output directory
@@ -118,11 +119,15 @@ def generate_ast(ast_path: os.PathLike | str, output_path: os.PathLike | str) ->
         ValueError: If the number of arguments provided is not exactly one.
 
     """
-    if not output_path or not ast_path:
-        print("Usage: python -m generate_ast <ast grammar path> <output directoy>")
+    if not output_path:
+        print("Usage: python -m generate_ast <output directoy>")
         raise ValueError()
-    ast_grammar = load_ast_grammar(ast_path)
-    define_ast(output_path, "Expr", ast_grammar)
+    
+    for ast_file in glob("./grammar/*.txt"):
+        if ast_file.endswith(".txt"):
+            ast_structs = load_ast_grammar(ast_file)
+            ast_visitor_name = ast_file.split(".")[-2].split("/")[-1]
+            define_ast(output_path, ast_visitor_name, ast_structs)
         
 
 def define_ast(output_dir: os.PathLike, base_name: str, ast_structs: List[ASTStruct]) -> None:
@@ -141,27 +146,28 @@ def define_ast(output_dir: os.PathLike, base_name: str, ast_structs: List[ASTStr
         None
 
     """
-    path: str = os.path.join(f"{output_dir}/ast.go")
+    path: str = os.path.join(f"{output_dir}/{base_name}.go")
     os.makedirs(os.path.dirname(path), exist_ok=True)
     
     with open(path, "w") as file:
         file.write("package ast \n\n")
-        file.write("import \"Crafting-interpreters/internal/token\"\n\n")
-        define_visitor(file, ast_structs)
-        file.write(f"type {base_name} interface {{ \n")
-        file.write("\t Accept(vistior Visitor) (any, error) \n")
+        file.write("import \"github.com/go-interpreter/internal/token\"\n\n")
+        define_visitor(file, base_name.title(), ast_structs)
+        file.write(f"type {base_name.title()} interface {{ \n")
+        file.write(f"\t Accept(vistior {base_name.title()}Visitor) (any, error) \n")
         file.write("}\n\n")
         for struct in ast_structs:
-            define_type(file, struct.name, struct.fields)
+            define_type(file, base_name.title(), struct.name, struct.fields)
 
     print(f"Generate AST file in {path}")
 
 
-def define_type(file: TextIOWrapper, struct_name: str, struct_field: list[ASTStructField]) -> None:
+def define_type(file: TextIOWrapper, base_name: str, struct_name: str, struct_field: list[ASTStructField]) -> None:
     """Writes the definition of a Go struct and its associated Accept method to a file.
 
     Args:
         file (TextIOWrapper): The file object to write the struct definition and method to.
+        base_name (str): The base name for the AST, typically the name of the AST.
         struct_name (str): The name of the Go struct to define.
         struct_field (str): The fields of the Go struct, provided as a string.
 
@@ -172,13 +178,13 @@ def define_type(file: TextIOWrapper, struct_name: str, struct_field: list[ASTStr
     file.write(f"type {struct_name} struct {{ \n")
     file.write("\n\t".join(f"{s.field_name} {s.field_type}" for s in struct_field))
     file.write("\n}\n")
-    file.write(f"func (node {struct_name}) Accept(visitor Visitor) (any, error) {'{'} \n\t")
+    file.write(f"func (node {struct_name}) Accept(visitor {base_name}Visitor) (any, error) {'{'} \n\t")
     file.write(f"return visitor.Visit{struct_name}(node)\n")
     file.write("}\n\n")
     file.write("\n")
     
 
-def define_visitor(file: TextIOWrapper, structs: List[ASTStruct]) -> None:
+def define_visitor(file: TextIOWrapper, base_name: str, structs: List[ASTStruct]) -> None:
     """Generates and writes the definition of a Visitor interface to the provided file.
 
     The Visitor interface includes methods for visiting each type specified in the
@@ -189,13 +195,14 @@ def define_visitor(file: TextIOWrapper, structs: List[ASTStruct]) -> None:
 
         file (TextIOWrapper): The file object to which the Visitor interface definition
                               will be written.
+        base_name (str): The base name for the Visitor interface, typically the name of the AST.
         structs (List[ASTStruct]): A list of Golang AST Structs loaded from the AST textfile.
 
     Returns:
         None
 
     """
-    file.write("type Visitor interface {\n")
+    file.write(f"type {base_name}Visitor interface {{\n")
     for struct in structs:
         file.write(f"\tVisit{struct.name}(node {struct.name}) (any, error)\n")
     file.write("}\n\n")
@@ -206,5 +213,6 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--ast", help="ast grammar file", type=str, required=True)
     parser.add_argument('-p', '--outpath', help="file path to store the ast.go", type=str, required=True)
     args = parser.parse_args()
-    generate_ast(ast_path=args.ast, output_path=args.outpath)
-    subprocess.run(["gofmt", "-w", args.path])
+    generate_ast(output_path=args.outpath)
+    subprocess.run(["gofmt", "-w", args.outpath], check=True)
+    subprocess.run(["goimports", "-w", args.outpath], check=True)
