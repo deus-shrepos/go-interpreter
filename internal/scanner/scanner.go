@@ -208,7 +208,7 @@ func (scanner *TokenScanner) peek() string {
 	if scanner.isAtEnd() {
 		return "\x00"
 	}
-	return string(scanner.Source[scanner.Current])
+	return scanner.Source[scanner.Current : scanner.Current+1]
 }
 
 // AddToken Wrapper around addToken() in case we just need the TokenType added
