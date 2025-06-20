@@ -1,12 +1,15 @@
 package ast
 
-import "github.com/go-interpreter/internal/token"
+import (
+	"github.com/go-interpreter/internal/token"
+)
 
 type ExprVisitor interface {
 	VisitBinary(node Binary) (any, error)
 	VisitGrouping(node Grouping) (any, error)
 	VisitLiteral(node Literal) (any, error)
 	VisitUnary(node Unary) (any, error)
+	VisitVariable(node Variable) (any, error)
 }
 
 type Expr interface {
@@ -46,4 +49,12 @@ type Unary struct {
 
 func (node Unary) Accept(visitor ExprVisitor) (any, error) {
 	return visitor.VisitUnary(node)
+}
+
+type Variable struct {
+	Name token.Token
+}
+
+func (node Variable) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitVariable(node)
 }

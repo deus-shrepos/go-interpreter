@@ -30,17 +30,50 @@ func NewParser(tokens []token.Token) Parser {
 // Parse parses the input source code into a slice of abstract syntax tree (AST) statements.
 // It continues parsing until the end of the input is reached or an error occurs.
 // Returns the parsed statements or an error if parsing fails.
-func (parser *Parser) Parse() ([]ast.Stmt, error) {
+func (parser *Parser) Parse() []ast.Stmt {
 	var statements []ast.Stmt
 	for !parser.isAtEnd() {
-		statement, err := parser.statement()
+		statements = append(statements, parser.Declarations())
+	}
+	return statements
+}
+
+func (parser *Parser) Declarations() ast.Stmt {
+	if parser.match(token.VAR) {
+		stmt, err := parser.varDeclaration()
 		if err != nil {
-			fmt.Print(fmt.Errorf("%v", err))
+			parser.synchronize()
 		}
-		statements = append(statements, statement)
+		return stmt
+	}
+	stmt, err := parser.statement()
+	if err != nil {
+		parser.synchronize()
+		return nil
+	}
+	return stmt
+
+}
+
+func (parser *Parser) varDeclaration() (ast.Stmt, error) {
+	tokenName, err := parser.consume(token.IDENTIFIER, "Expect variable name.")
+	if err != nil {
+		return nil, err
 	}
 
-	return statements, nil
+	var initializer ast.Expr
+	if parser.match(token.EQUAL) {
+		initializer, err = parser.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	_, err = parser.consume(token.SEMICOLON, "Expect ';' after variable declaration")
+	if err != nil {
+		return nil, err
+	}
+	return ast.VarStmt{Name: tokenName, Initializer: initializer}, nil
+
 }
 
 // statement parses a statement from the input tokens and returns it as an
@@ -226,6 +259,8 @@ func (parser *Parser) primary() (ast.Expr, error) {
 		return ast.Literal{Value: nil}, nil
 	case parser.match(token.NUMBER, token.STRING):
 		return ast.Literal{Value: parser.previous().Literal}, nil
+	case parser.match(token.IDENTIFIER):
+		return ast.Variable{Name: parser.previous()}, nil
 	case parser.match(token.LEFT_PAREN):
 		expr, e := parser.expression()
 		if e != nil {
@@ -247,7 +282,6 @@ func (parser *Parser) primary() (ast.Expr, error) {
 			Where:   peek.Char,
 			Message: fmt.Sprintf("Unexpected token '%v'", peek.Lexeme),
 		}
-
 	}
 }
 
@@ -308,5 +342,24 @@ func (parser *Parser) consume(type_ token.TokenType, message string) (token.Toke
 		Line:    parser.peek().Line,
 		Where:   parser.peek().Char,
 		Message: message,
+	}
+}
+
+// This function synchronizes the parser by skipping tokens until it finds
+// a token of a certain type or reaches the end of the input.
+// It is used to recover from errors in the parsing process.
+// It advances the parser until it finds a token of the given type or reaches
+// the end of the input. It is used to recover from errors in the parsing process.
+// It is used to skip tokens until it finds a token of a certain type or reaches
+func (parser *Parser) synchronize() {
+	parser.advance()
+	for !parser.isAtEnd() {
+		switch parser.previous().Type {
+		case token.SEMICOLON: //until we reach the sync point
+			return
+		case token.CLASS, token.FUN, token.VAR, token.IF, token.WHILE, token.PRINT:
+			return
+		}
+		parser.advance()
 	}
 }
