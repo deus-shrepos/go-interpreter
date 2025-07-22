@@ -30,19 +30,21 @@ type TokenScanner struct {
 	Line    int
 }
 
-// Init This initializes the source code
-func (scanner *TokenScanner) Init(source string) {
-	scanner.Source = source
-	scanner.Start = 0
-	scanner.Current = 0
-	scanner.Line = 0
+// NewTokenScanner Init This initializes the source code
+func NewTokenScanner(source string) TokenScanner {
+	return TokenScanner{
+		Source:  source,
+		Start:   0,
+		Current: 0,
+		Line:    0,
+	}
 }
 
 // ScanTokens scans the source code and produces a list of tokens based on the language grammar.
 func (scanner *TokenScanner) ScanTokens() []token.Token {
 	for !scanner.isAtEnd() {
 		scanner.Start = scanner.Current
-		scanner.ScanToken()
+		_ = scanner.ScanToken()
 	}
 	scanner.Tokens = append(scanner.Tokens, token.Token{Type: token.EOF, Lexeme: "", Literal: nil, Line: scanner.Line})
 	return scanner.Tokens
@@ -113,7 +115,10 @@ func (scanner *TokenScanner) ScanToken() error {
 	case "\n":
 		scanner.Line++
 	case "\"":
-		scanner.string()
+		err := scanner.string()
+		if err != nil {
+			return err
+		}
 	default:
 		if isDigit(c) {
 			scanner.number()
