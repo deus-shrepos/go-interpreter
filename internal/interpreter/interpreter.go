@@ -41,23 +41,23 @@ func (i *Interpreter) Interpret(stmts []ast.Stmt) {
 // in the current environment with its name and value, and returns any error
 // encountered during evaluation. If no initializer is provided, the variable
 // is defined with a nil value.
-func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) error {
+func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) (any, error) {
 	var value any = nil
 	if stmt.Initializer != nil {
 		var err error = nil
 		value, err = i.eval(stmt.Initializer)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	i.environment.Define(stmt.Name.Lexeme, value)
-	return nil
+	return nil, nil
 }
 
 // VisitVarExpr evaluates a variable expression by retrieving its value from the current environment.
 // It takes an ast.Variable as input, attempts to get the value associated with the variable's name,
 // and returns the value along with any error encountered during the lookup.
-func (i *Interpreter) VisitVarExpr(expr ast.Variable) (any, error) {
+func (i *Interpreter) VisitVariable(expr ast.Variable) (any, error) {
 	value, err := i.environment.Get(expr.Name)
 	if err != nil {
 		return nil, err
