@@ -20,13 +20,13 @@ func NewEnvirnoment() Environment {
 	}
 }
 
-// Define Defines a variable in the envirnoment
+// Define Defines a variable in the environment
 // It will set as a mapping bound to a value of any type
 func (env *Environment) Define(varName string, value any) {
 	env.Values[varName] = value
 }
 
-// Get Gets the value of a bound variable in an envirnoment
+// Get Gets the value of a bound variable in an environment
 // If it doesn't find i, it raises an execution Error
 func (env *Environment) Get(token token.Token) (any, error) {
 	_, exists := env.Values[token.Lexeme]
