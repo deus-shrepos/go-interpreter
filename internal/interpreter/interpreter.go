@@ -18,7 +18,9 @@ type Interpreter struct {
 }
 
 func NewInterpreter() Interpreter {
-	return Interpreter{}
+	return Interpreter{
+		environment: NewEnvirnoment(),
+	}
 }
 
 // Interpret executes a series of statements provided as input.
@@ -28,11 +30,12 @@ func (i *Interpreter) Interpret(stmts []ast.Stmt) {
 	if len(stmts) == 0 {
 		return
 	}
-	for _, statememnt := range stmts {
-		_, err := i.exec(statememnt) // WE DO NOT EVAL STATMENTS, WE EXECUTE THEM
+	for _, statement := range stmts {
+		execStmt, err := i.exec(statement) // WE DO NOT EVAL STATMENTS, WE EXECUTE THEM
 		if err != nil {
 			fmt.Println(fmt.Errorf("error: %v", err))
 		}
+		fmt.Println(execStmt)
 	}
 }
 
@@ -54,7 +57,7 @@ func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) (any, error) {
 	return nil, nil
 }
 
-// VisitVarExpr evaluates a variable expression by retrieving its value from the current environment.
+// VisitVariable VisitVarExpr evaluates a variable expression by retrieving its value from the current environment.
 // It takes an ast.Variable as input, attempts to get the value associated with the variable's name,
 // and returns the value along with any error encountered during the lookup.
 func (i *Interpreter) VisitVariable(expr ast.Variable) (any, error) {

@@ -63,6 +63,17 @@ func (printer *PrintAST) VisitUnary(node ast.Unary) (interface{}, error) {
 	), nil
 }
 
+func (printer *PrintAST) VisitVariable(node ast.Variable) (interface{}, error) {
+	printer.indentation++
+	variableName, _ := node.Accept(printer)
+	printer.indentation--
+	return fmt.Sprintf("%Variable(\n%s%s\n)",
+		strings.Repeat("  ", printer.indentation),
+		strings.Repeat("  ", printer.indentation+1),
+		variableName,
+	), nil
+}
+
 func (printer *PrintAST) Print(expression ast.Expr) string {
 	expr, _ := expression.Accept(printer)
 	return expr.(string)
