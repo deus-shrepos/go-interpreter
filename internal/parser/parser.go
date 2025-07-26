@@ -83,11 +83,11 @@ func (parser *Parser) varDeclaration() (ast.Stmt, error) {
 // accordingly. Returns an error if parsing fails at any stage.
 func (parser *Parser) statement() (ast.Stmt, error) {
 	if parser.match(token.PRINT) {
-		printStatment, err := parser.printStatement()
+		printStatement, err := parser.printStatement()
 		if err != nil {
 			return nil, err
 		}
-		return printStatment, nil
+		return printStatement, nil
 	}
 	// It must be an expression statement
 	expressionStmt, err := parser.expression()
