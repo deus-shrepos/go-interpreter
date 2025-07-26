@@ -33,8 +33,12 @@ func NewParser(tokens []token.Token) Parser {
 func (parser *Parser) Parse() []ast.Stmt {
 	var statements []ast.Stmt
 	for !parser.isAtEnd() {
-		statements = append(statements, parser.Declarations())
+		fmt.Println("\n")
+		dec := parser.Declarations()
+		fmt.Println(dec)
+		statements = append(statements, dec)
 	}
+	// fmt.Println(statements)
 	return statements
 }
 
@@ -114,15 +118,46 @@ func (parser *Parser) printStatement() (ast.Stmt, error) {
 
 }
 
-// expression parses and returns an expression from the input source.
-// It delegates the parsing to the equality method and returns the resulting
-// abstract syntax tree (AST) expression or an error if parsing fails.
+// expression parses an assignment expression from the input tokens.
+// It delegates parsing to the assignment method and returns the resulting AST expression node.
+// If an error occurs during parsing, it returns nil and the error.
 func (parser *Parser) expression() (ast.Expr, error) {
-	eq, err := parser.equality()
+	assignment, err := parser.assignment()
 	if err != nil {
 		return nil, err
 	}
-	return eq, nil
+	return assignment, nil
+}
+
+// assignment parses an assignment expression from the input tokens.
+// It first parses an equality expression. If the next token is an assignment operator ('='),
+// it recursively parses the right-hand side as another assignment expression.
+// If the left-hand side is a variable, it constructs an Assign AST node.
+// Otherwise, it returns a parser error indicating an invalid assignment target.
+// Returns the constructed assignment expression or an error if parsing fails.
+func (parser *Parser) assignment() (ast.Expr, error) {
+	expr, err := parser.equality()
+	if err != nil {
+		return nil, err
+	}
+	if parser.match(token.EQUAL) {
+		equals := parser.previous()
+		value, err := parser.assignment()
+		if err != nil {
+			return nil, err
+		}
+		variable, isInstanceOfVariable := expr.(ast.Variable)
+		if isInstanceOfVariable {
+			return ast.Assign{Name: variable.Name, Value: value}, nil
+		}
+		return nil, errors.ExecutionError{
+			Type:    errors.PARSER_ERROR,
+			Line:    equals.Line,
+			Where:   equals.Char,
+			Message: fmt.Sprintf("Unexpected token '%v'", equals.Lexeme),
+		}
+	}
+	return expr, nil
 }
 
 // equality parses and constructs an equality expression in the abstract syntax tree (AST).

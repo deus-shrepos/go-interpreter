@@ -10,10 +10,20 @@ type ExprVisitor interface {
 	VisitLiteral(node Literal) (any, error)
 	VisitUnary(node Unary) (any, error)
 	VisitVariable(node Variable) (any, error)
+	VisitAssign(node Assign) (any, error)
 }
 
 type Expr interface {
 	Accept(vistior ExprVisitor) (any, error)
+}
+
+type Assign struct {
+	Name  token.Token
+	Value Expr
+}
+
+func (node Assign) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitAssign(node)
 }
 
 type Binary struct {
