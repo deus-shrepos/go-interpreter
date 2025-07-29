@@ -14,12 +14,12 @@ import (
 // It is responsible for executing and evaluating code based on the
 // implemented logic and rules of the interpreter.
 type Interpreter struct {
-	environment Environment
+	Environment Environment
 }
 
 func NewInterpreter() Interpreter {
 	return Interpreter{
-		environment: NewEnvirnoment(),
+		Environment: NewEnvirnoment(),
 	}
 }
 
@@ -31,17 +31,24 @@ func (i *Interpreter) Interpret(stmts []ast.Stmt) {
 		return
 	}
 	for _, statement := range stmts {
-		execStmt, err := i.exec(statement) // WE DO NOT EVAL STATMENTS, WE EXECUTE THEM
+		// We panic if the interpreter parses a NIL (because that is parsing error).
+		// If we execute a NIL that will make the whole goroutine panic.
+		// This would essentially make sure we have an early exit.
+		if statement == nil {
+			fmt.Println(fmt.Errorf("error: Interpreter panic. Exiting program."))
+			return
+		}
+		_, err := i.exec(statement) // WE DO NOT EVAL STATEMENTS, WE EXECUTE THEM
 		if err != nil {
 			fmt.Println(fmt.Errorf("error: %v", err))
+			return
 		}
-		fmt.Println(execStmt)
 	}
 }
 
 // VisitVarStmt handles the execution of a variable declaration statement.
 // It evaluates the initializer expression if present, defines the variable
-// in the current environment with its name and value, and returns any error
+// in the current Environment with its name and value, and returns any error
 // encountered during evaluation. If no initializer is provided, the variable
 // is defined with a nil value.
 func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) (any, error) {
@@ -53,19 +60,34 @@ func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) (any, error) {
 			return nil, err
 		}
 	}
-	i.environment.Define(stmt.Name.Lexeme, value)
+	i.Environment.Define(stmt.Name.Lexeme, value)
 	return nil, nil
 }
 
-// VisitVariable VisitVarExpr evaluates a variable expression by retrieving its value from the current environment.
+// VisitVariable VisitVarExpr evaluates a variable expression by retrieving its value from the current Environment.
 // It takes an ast.Variable as input, attempts to get the value associated with the variable's name,
 // and returns the value along with any error encountered during the lookup.
 func (i *Interpreter) VisitVariable(expr ast.Variable) (any, error) {
-	value, err := i.environment.Get(expr.Name)
+	value, err := i.Environment.Get(expr.Name)
 	if err != nil {
 		return nil, err
 	}
 	return value, nil
+}
+
+// VisitAssign handles assignment expressions in the AST.
+// It evaluates the right-hand side value, then assigns it to the variable in the current Environment.
+// Returns the assigned value and any error encountered during evaluation or assignment.
+func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
+	value, err := i.eval(expr.Value)
+	if err != nil {
+		return nil, err
+	}
+	err = i.Environment.Assign(expr.Name, value)
+	if err != nil {
+		return nil, err
+	}
+	return value, err
 }
 
 // VisitLiteral evaluates a literal expression and returns its value.
