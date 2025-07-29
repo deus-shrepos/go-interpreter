@@ -14,7 +14,7 @@ type ExprVisitor interface {
 }
 
 type Expr interface {
-	Accept(vistior ExprVisitor) (any, error)
+	Accept(visitor ExprVisitor) (any, error)
 }
 
 type Assign struct {
