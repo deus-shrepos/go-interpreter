@@ -9,7 +9,7 @@ type StmtVisitor interface {
 }
 
 type Stmt interface {
-	Accept(vistior StmtVisitor) (any, error)
+	Accept(visitor StmtVisitor) (any, error)
 }
 
 type ExpressionStmt struct {

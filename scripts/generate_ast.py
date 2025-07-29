@@ -8,13 +8,14 @@ Usage:
     python generate_ast.py --ast <path> --outpath <output-path>
 """
 
+import argparse
 import os
 import subprocess
-from glob import glob
-import argparse
 from dataclasses import dataclass
-from typing import List
+from glob import glob
 from io import TextIOWrapper
+from typing import List
+
 
 @dataclass
 class ASTStructField:
@@ -28,8 +29,7 @@ class ASTStruct:
     fields: list[ASTStructField]
 
 
-
-def load_ast_grammar(file_path: os.PathLike) -> list[ASTStruct]:
+def load_ast_grammar(file_path: os.PathLike | str) -> list[ASTStruct]:
     """
     Loads and parses an Abstract Syntax Tree (AST) grammar file.
 
@@ -59,7 +59,8 @@ def load_ast_grammar(file_path: os.PathLike) -> list[ASTStruct]:
             line = file.readline().strip()
     return rules
 
-def parse_ast_lines(line: str) -> ASTStruct:
+
+def parse_ast_lines(line: str) -> ASTStruct | None:
     """
     Parses a single line of AST (Abstract Syntax Tree) definition and converts it into an `ASTStruct` object.
 
@@ -95,7 +96,7 @@ def parse_ast_lines(line: str) -> ASTStruct:
     """
 
     if line.startswith("#"): # ignore comments
-        return
+        return None
     rule = line.strip().split("->")
     struct = rule[0].strip()
     fields = rule[1].split("|")

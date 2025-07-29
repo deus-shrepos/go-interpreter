@@ -10,16 +10,19 @@ This project is an implementation of a Tree-Walk interpreter written in Go. The 
 ### Current Status
 This project is a **work in progress** and is far from complete. Many features are still under development, and the codebase is subject to significant changes. 
 
-### Future Plans
-- Add support for more complex expressions and statements.
-- Implement error recovery for better user feedback.
-- Expand the language's grammar to include loops, conditionals, and functions.
-- Improve performance and add comprehensive tests.
+## Features
 
-### Getting Started
-To run the interpreter, clone the repository and build the project using Go:
+- **Token Scanner**: Converts source code into tokens.
+- **Parser**: Builds an Abstract Syntax Tree (AST) from tokens.
+- **Interpreter**: Evaluates the AST, supporting arithmetic, logical operations, and string manipulation.
+- **Error Handling**: Reports runtime and syntax errors with line and character information.
+
+## Usage
+
+Clone the repository and run the interpreter:
+
 ```bash
-git clone https://github.com/your-username/go-interpreter.git
+git clone https://github.com/shahnawaz-lang/go-interpreter.git
 cd go-interpreter
 make run
 ```

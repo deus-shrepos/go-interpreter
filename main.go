@@ -9,7 +9,7 @@ import (
 func main() {
 	//l := repl.Repl{}
 	//l.LoadProgram("./examples/program.txt"
-	programText := "var x = 10;print x;"
+	programText := "var x = (1 + 2 + (3+4));print x;"
 	tokenScanner := scanner.NewTokenScanner(programText)
 	_ = tokenScanner.ScanTokens()
 	p := parser.Parser{Tokens: tokenScanner.Tokens}
