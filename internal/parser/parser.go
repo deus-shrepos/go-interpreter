@@ -408,7 +408,9 @@ func (parser *Parser) synchronize() {
 			return
 		case token.CLASS, token.FUN, token.VAR, token.IF, token.WHILE, token.PRINT:
 			return
+		default:
+			parser.advance()
 		}
-		parser.advance()
+
 	}
 }
