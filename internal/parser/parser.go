@@ -33,32 +33,41 @@ func NewParser(tokens []token.Token) Parser {
 func (parser *Parser) Parse() []ast.Stmt {
 	var statements []ast.Stmt
 	for !parser.isAtEnd() {
-		fmt.Println("\n")
-		dec := parser.Declarations()
-		fmt.Println(dec)
-		statements = append(statements, dec)
+		decs, err := parser.Declarations()
+		if err != nil {
+			fmt.Println(err)
+		}
+		statements = append(statements, decs)
 	}
-	// fmt.Println(statements)
 	return statements
 }
 
-func (parser *Parser) Declarations() ast.Stmt {
+// Declarations parses a declaration statement from the input tokens.
+// If the current token is a VAR keyword, it parses a variable declaration.
+// Otherwise, it parses a general statement. If an error occurs during parsing,
+// the parser attempts to recover by synchronizing to the next valid statement boundary.
+// Returns the parsed statement node, or nil if parsing fails.
+func (parser *Parser) Declarations() (ast.Stmt, error) {
 	if parser.match(token.VAR) {
 		stmt, err := parser.varDeclaration()
 		if err != nil {
 			parser.synchronize()
 		}
-		return stmt
+		return stmt, err
 	}
 	stmt, err := parser.statement()
 	if err != nil {
 		parser.synchronize()
-		return nil
+		return nil, err
 	}
-	return stmt
+	return stmt, err
 
 }
 
+// varDeclaration parses a variable declaration statement from the input tokens.
+// It expects an identifier for the variable name, optionally followed by an
+// initializer expression if an '=' token is present, and requires a terminating
+// semicolon. If parsing fails at any stage, it returns an error.
 func (parser *Parser) varDeclaration() (ast.Stmt, error) {
 	tokenName, err := parser.consume(token.IDENTIFIER, "Expect variable name.")
 	if err != nil {
@@ -136,10 +145,11 @@ func (parser *Parser) expression() (ast.Expr, error) {
 // Otherwise, it returns a parser error indicating an invalid assignment target.
 // Returns the constructed assignment expression or an error if parsing fails.
 func (parser *Parser) assignment() (ast.Expr, error) {
-	expr, err := parser.equality()
+	expr, err := parser.equality() // Parse the left-hand side with higher precedence
 	if err != nil {
 		return nil, err
 	}
+	// Parse right-hand side and then wrap it all up in an assignment expression tree node
 	if parser.match(token.EQUAL) {
 		equals := parser.previous()
 		value, err := parser.assignment()
@@ -148,6 +158,10 @@ func (parser *Parser) assignment() (ast.Expr, error) {
 		}
 		variable, isInstanceOfVariable := expr.(ast.Variable)
 		if isInstanceOfVariable {
+			_, err = parser.consume(token.SEMICOLON, "Expect ';' at end of the expression")
+			if err != nil {
+				return nil, err
+			}
 			return ast.Assign{Name: variable.Name, Value: value}, nil
 		}
 		return nil, errors.ExecutionError{
@@ -313,8 +327,8 @@ func (parser *Parser) primary() (ast.Expr, error) {
 		peek := parser.peek()
 		return nil, errors.ExecutionError{
 			Type:    errors.PARSER_ERROR,
-			Line:    peek.Line,
-			Where:   peek.Char,
+			Line:    parser.previous().Line,
+			Where:   parser.previous().Char,
 			Message: fmt.Sprintf("Unexpected token '%v'", peek.Lexeme),
 		}
 	}
@@ -364,7 +378,7 @@ func (parser *Parser) previous() token.Token {
 	return parser.Tokens[parser.Current-1]
 }
 
-// This function consumer or otherwise it throws an error
+// This function consumer, or otherwise it throws an error
 // It consumes the token if it is of the given type.
 // If it is not, it throws an error with the given message.
 // The caller can handle the error and decide what to do with it.
