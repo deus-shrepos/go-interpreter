@@ -19,7 +19,7 @@ type Interpreter struct {
 
 func NewInterpreter() Interpreter {
 	return Interpreter{
-		Environment: NewEnvirnoment(),
+		Environment: NewEnvironment(nil),
 	}
 }
 
@@ -35,7 +35,7 @@ func (i *Interpreter) Interpret(stmts []ast.Stmt) {
 		// If we execute a NIL that will make the whole goroutine panic.
 		// This would essentially make sure we have an early exit.
 		if statement == nil {
-			fmt.Println(fmt.Errorf("error: Interpreter panic. Exiting program."))
+			fmt.Println(fmt.Errorf("error: Interpreter panic. Exiting program"))
 			return
 		}
 		_, err := i.exec(statement) // WE DO NOT EVAL STATEMENTS, WE EXECUTE THEM
@@ -88,6 +88,18 @@ func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
 		return nil, err
 	}
 	return value, err
+}
+
+// VisitBlockStmt VisitBlock executes a block statement by creating a new environment scope.
+// It runs each statement in the block within this new environment, ensuring
+// that variables declared inside the block do not affect the outer environment.
+// Returns nil and any error encountered during execution.
+func (i *Interpreter) VisitBlockStmt(blockStmt ast.Block) (any, error) {
+	_, err := i.execBlock(blockStmt.Statements, NewEnvironment(&i.Environment))
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
 // VisitLiteral evaluates a literal expression and returns its value.
@@ -153,6 +165,24 @@ func (i *Interpreter) eval(expr ast.Expr) (any, error) {
 // of the statement execution along with any potential error.
 func (i *Interpreter) exec(stmt ast.Stmt) (any, error) {
 	return stmt.Accept(i)
+}
+
+// execBlock executes a list of statements within a new environment scope.
+// It temporarily replaces the interpreter's current environment with the provided one,
+// executes each statement in the block, and restores the previous environment afterward.
+// If any statement returns an error, execution stops and the error is returned.
+// Returns nil and any error encountered during execution.
+func (i *Interpreter) execBlock(stmts []ast.Stmt, environment Environment) (any, error) {
+	previous := i.Environment
+	i.Environment = environment
+	for _, stmt := range stmts {
+		_, err := i.exec(stmt)
+		if err != nil {
+			return nil, err
+		}
+	}
+	i.Environment = previous
+	return nil, nil
 }
 
 // VisitBinary evaluates a binary expression by visiting its left and right operands

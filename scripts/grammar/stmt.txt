@@ -1,4 +1,5 @@
 #Visitor:Stmt
+Block -> statements:[]stmts.Stmts{}
 ExpressionStmt -> Expression:Expr
 PrintStmt -> Expression:Expr
 VarStmt -> name:token.Token, initalizer:Expr

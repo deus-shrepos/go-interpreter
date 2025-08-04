@@ -102,12 +102,37 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 		}
 		return printStatement, nil
 	}
+	if parser.match(token.LEFT_BRACE) {
+		statementsBlock, err := parser.block()
+		if err != nil {
+			return nil, err
+		}
+		return ast.Block{Statements: statementsBlock}, nil
+	}
 	// It must be an expression statement
 	expressionStmt, err := parser.expression()
 	if err != nil {
 		return nil, err
 	}
 	return ast.ExpressionStmt{Expression: expressionStmt}, nil
+}
+
+// block parses n number of statements, starting from the "{" to the "}"
+func (parser *Parser) block() ([]ast.Stmt, error) {
+	statements := make([]ast.Stmt, 0)
+	// Keep parsing until you reach the "}" and if you are the EOF
+	for !parser.check(token.RIGHT_BRACE) && !parser.isAtEnd() {
+		statement, err := parser.Declarations()
+		if err != nil {
+			return nil, err
+		}
+		statements = append(statements, statement)
+	}
+	_, err := parser.consume(token.RIGHT_BRACE, "Expect '}' after the block.")
+	if err != nil {
+		return nil, err
+	}
+	return statements, nil
 }
 
 // PrintStatement parses a print statement in the source code.

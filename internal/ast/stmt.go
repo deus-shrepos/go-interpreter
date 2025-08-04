@@ -6,10 +6,19 @@ type StmtVisitor interface {
 	VisitExpressionStmt(node ExpressionStmt) (any, error)
 	VisitPrintStmt(node PrintStmt) (any, error)
 	VisitVarStmt(node VarStmt) (any, error)
+	VisitBlockStmt(node Block) (any, error)
 }
 
 type Stmt interface {
 	Accept(visitor StmtVisitor) (any, error)
+}
+
+type Block struct {
+	Statements []Stmt
+}
+
+func (node Block) Accept(visitor StmtVisitor) (any, error) {
+	return visitor.VisitBlockStmt(node)
 }
 
 type ExpressionStmt struct {
