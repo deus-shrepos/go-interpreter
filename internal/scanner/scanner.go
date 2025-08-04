@@ -1,6 +1,7 @@
 package scanner
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/go-interpreter/internal/errors"
@@ -44,7 +45,10 @@ func NewTokenScanner(source string) TokenScanner {
 func (scanner *TokenScanner) ScanTokens() []token.Token {
 	for !scanner.isAtEnd() {
 		scanner.Start = scanner.Current
-		_ = scanner.ScanToken()
+		err := scanner.ScanToken()
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 	scanner.Tokens = append(scanner.Tokens, token.Token{Type: token.EOF, Lexeme: "", Literal: nil, Line: scanner.Line})
 	return scanner.Tokens
@@ -136,22 +140,26 @@ func (scanner *TokenScanner) ScanToken() error {
 
 // string scans a string literal, handles line tracking for multi-line strings, and adds the token to the token list.
 func (scanner *TokenScanner) string() error {
+	// Two cases run here:
+	//	1) continue scanning until you find " and you are not at the EOL
+	//  2) did not find " but you are the EOL
 	for scanner.peek() != "\"" && !scanner.isAtEnd() {
 		if scanner.peek() == "\n" {
 			scanner.Line++
-			scanner.advance()
-		}
-		if scanner.isAtEnd() {
-			return errors.ExecutionError{Type: errors.SCANNER_ERROR,
-				Line:    scanner.Line,
-				Where:   scanner.Current,
-				Message: "Unterminated string",
-			}
 		}
 		scanner.advance()
-		value := scanner.Source[scanner.Start+1 : scanner.Current-1]
-		scanner.addToken(token.STRING, value)
 	}
+	// If we are the EOL, we have an unterminated string
+	if scanner.isAtEnd() {
+		return errors.ExecutionError{Type: errors.SCANNER_ERROR,
+			Line:    scanner.Line,
+			Where:   scanner.Current,
+			Message: "Unterminated string",
+		}
+	}
+	scanner.advance()
+	value := scanner.Source[scanner.Start+1 : scanner.Current-1]
+	scanner.addToken(token.STRING, value)
 	return nil
 }
 
