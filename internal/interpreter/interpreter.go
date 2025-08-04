@@ -44,6 +44,7 @@ func (i *Interpreter) Interpret(stmts []ast.Stmt) {
 			return
 		}
 	}
+	fmt.Println("") // To get rid of that annoying "%" in the terminal
 }
 
 // VisitVarStmt handles the execution of a variable declaration statement.
@@ -142,7 +143,7 @@ func (i *Interpreter) VisitExpressionStmt(stmt ast.ExpressionStmt) (any, error) 
 // used for side effects (printing).
 func (i *Interpreter) VisitPrintStmt(stmt ast.PrintStmt) (any, error) {
 	value, _ := i.eval(stmt.Expression)
-	fmt.Printf("%s", stringify(value))
+	fmt.Printf("%v", stringify(value))
 	return nil, nil
 }
 
