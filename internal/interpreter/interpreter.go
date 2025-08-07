@@ -3,7 +3,7 @@ package interpreter
 import (
 	_ "errors"
 	"fmt"
-	"strings"
+	"strconv"
 
 	"github.com/go-interpreter/internal/ast"
 	"github.com/go-interpreter/internal/errors"
@@ -14,37 +14,36 @@ import (
 // It is responsible for executing and evaluating code based on the
 // implemented logic and rules of the interpreter.
 type Interpreter struct {
-	Environment Environment
+	environment *Environment
 }
 
 func NewInterpreter() Interpreter {
 	return Interpreter{
-		Environment: NewEnvironment(nil),
+		environment: NewEnvironment(nil),
 	}
 }
 
 // Interpret executes a series of statements provided as input.
 // It iterates over each statement, executing them one by one using the exec method.
 // If an error occurs during the execution of a statement, it logs the error to the console.
-func (i *Interpreter) Interpret(stmts []ast.Stmt) {
+func (i *Interpreter) Interpret(stmts []ast.Stmt) error {
 	if len(stmts) == 0 {
-		return
+		return nil
 	}
 	for _, statement := range stmts {
 		// We panic if the interpreter parses a NIL (because that is parsing error).
 		// If we execute a NIL that will make the whole goroutine panic.
 		// This would essentially make sure we have an early exit.
 		if statement == nil {
-			fmt.Println(fmt.Errorf("error: Interpreter panic. Exiting program"))
-			return
+			return fmt.Errorf("error: Interpreter panic. Exiting program")
 		}
 		_, err := i.exec(statement) // WE DO NOT EVAL STATEMENTS, WE EXECUTE THEM
 		if err != nil {
-			fmt.Println(fmt.Errorf("error: %v", err))
-			return
+			return fmt.Errorf("error: %v", err)
 		}
 	}
 	fmt.Println("") // To get rid of that annoying "%" in the terminal
+	return nil
 }
 
 // VisitVarStmt handles the execution of a variable declaration statement.
@@ -61,7 +60,7 @@ func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) (any, error) {
 			return nil, err
 		}
 	}
-	i.Environment.Define(stmt.Name.Lexeme, value)
+	i.environment.Define(stmt.Name.Lexeme, value)
 	return nil, nil
 }
 
@@ -69,7 +68,7 @@ func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) (any, error) {
 // It takes an ast.Variable as input, attempts to get the value associated with the variable's name,
 // and returns the value along with any error encountered during the lookup.
 func (i *Interpreter) VisitVariable(expr ast.Variable) (any, error) {
-	value, err := i.Environment.Get(expr.Name)
+	value, err := i.environment.Get(expr.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +83,7 @@ func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = i.Environment.Assign(expr.Name, value)
+	err = i.environment.Assign(expr.Name, value)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +95,7 @@ func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
 // that variables declared inside the block do not affect the outer environment.
 // Returns nil and any error encountered during execution.
 func (i *Interpreter) VisitBlockStmt(blockStmt ast.Block) (any, error) {
-	_, err := i.execBlock(blockStmt.Statements, NewEnvironment(&i.Environment))
+	_, err := i.execBlock(blockStmt.Statements, NewEnvironment(i.environment))
 	if err != nil {
 		return nil, err
 	}
@@ -173,16 +172,16 @@ func (i *Interpreter) exec(stmt ast.Stmt) (any, error) {
 // executes each statement in the block, and restores the previous environment afterward.
 // If any statement returns an error, execution stops and the error is returned.
 // Returns nil and any error encountered during execution.
-func (i *Interpreter) execBlock(stmts []ast.Stmt, environment Environment) (any, error) {
-	previous := i.Environment
-	i.Environment = environment
+func (i *Interpreter) execBlock(stmts []ast.Stmt, environment *Environment) (any, error) {
+	previous := i.environment
+	i.environment = environment
 	for _, stmt := range stmts {
 		_, err := i.exec(stmt)
 		if err != nil {
 			return nil, err
 		}
 	}
-	i.Environment = previous
+	i.environment = previous
 	return nil, nil
 }
 
@@ -199,7 +198,7 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 		// Check if the operands are strings
 		if leftValue, ok := left.(string); ok {
 			if rightValue, ok := right.(string); ok {
-				return rightValue + leftValue, nil
+				return leftValue + rightValue, nil
 			}
 		}
 		if rightValue, ok := right.(string); ok {
@@ -294,8 +293,15 @@ func IsTruthy(object any) bool {
 }
 
 func stringify(object any) string {
-	if object == nil {
-		return "nil"
+	switch value := object.(type) {
+	case float64:
+		return strconv.FormatFloat(value, 'g', -1, 64)
+	case string:
+		return value
+	case nil:
+		return ""
+	default:
+		return fmt.Sprint(value)
 	}
 
 	value, isDouble := object.(float64)
