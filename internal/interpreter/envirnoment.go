@@ -55,7 +55,7 @@ func (env *Environment) Get(token token.Token) (any, error) {
 		Type:    errors.RUNTIME_ERROR,
 		Line:    token.Line,
 		Where:   token.Char,
-		Message: fmt.Sprintf("%s Undefined variable %s.", token, token.Lexeme),
+		Message: fmt.Sprintf("Undefined variable %s.", token.Lexeme),
 	}
 }
 
