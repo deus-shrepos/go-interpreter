@@ -15,9 +15,9 @@ type Environment struct {
 }
 
 // NewEnvironment Initiates a new Environment
-func NewEnvironment(enclosing *Environment) Environment {
+func NewEnvironment(enclosing *Environment) *Environment {
 	// Global scope
-	environment := Environment{
+	environment := &Environment{
 		Enclosing: nil,
 		Values:    make(map[string]any),
 	}
