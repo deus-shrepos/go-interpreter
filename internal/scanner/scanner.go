@@ -159,6 +159,10 @@ func (scanner *TokenScanner) string() error {
 	}
 	scanner.advance()
 	value := scanner.Source[scanner.Start+1 : scanner.Current-1]
+	value, err := strconv.Unquote(`"` + value + `"`) // From raw to an actual string
+	if err != nil {
+		return err
+	}
 	scanner.addToken(token.STRING, value)
 	return nil
 }
