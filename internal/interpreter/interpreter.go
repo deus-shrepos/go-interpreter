@@ -142,7 +142,7 @@ func (i *Interpreter) VisitExpressionStmt(stmt ast.ExpressionStmt) (any, error) 
 // used for side effects (printing).
 func (i *Interpreter) VisitPrintStmt(stmt ast.PrintStmt) (any, error) {
 	value, _ := i.eval(stmt.Expression)
-	fmt.Printf("%v", stringify(value))
+	fmt.Print(stringify(value))
 	return nil, nil
 }
 
@@ -303,14 +303,6 @@ func stringify(object any) string {
 	default:
 		return fmt.Sprint(value)
 	}
-
-	value, isDouble := object.(float64)
-	if isDouble {
-		valueString := fmt.Sprint(value)
-		valueString = strings.TrimSuffix(valueString, ".0")
-		return valueString
-	}
-	return fmt.Sprintf("%v", object)
 }
 
 func checkIfNumber(object any, operator token.Token) error {
