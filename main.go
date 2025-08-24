@@ -7,15 +7,30 @@ import (
 )
 
 func main() {
-	//l := repl.Repl{}
-	//l.LoadProgram("./examples/program.txt"
-	programText := "var x = (1 + 2 + (3+4));print x;"
+	// THE MAIN FILE WILL CHANGE
+	programText := `
+	var globalScope = 10;
+	  {
+	 	 var innerScope1 = 20;
+	     {
+			var innerScope2 = 30;
+	  		print innerScope2;
+			print "\n";
+	     }
+	     print innerScope1;
+		 print "\n";
+	  }
+	print globalScope;
+	`
 	tokenScanner := scanner.NewTokenScanner(programText)
 	_ = tokenScanner.ScanTokens()
 	p := parser.Parser{Tokens: tokenScanner.Tokens}
 	expr := p.Parse()
 	inter := interpreter.NewInterpreter()
-	inter.Interpret(expr)
+	err := inter.Interpret(expr)
+	if err != nil {
+		panic(err)
+	}
 	//printer := printer.PrintAST{}
 	//fmt.Println("\n", printer.Print(expr))
 }
