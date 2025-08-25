@@ -75,6 +75,25 @@ func (i *Interpreter) VisitVariable(expr ast.Variable) (any, error) {
 	return value, nil
 }
 
+func (i *Interpreter) VisitIfStmt(stmt ast.IfStmt) (any, error) {
+	evaluatedExpr, err := i.eval(stmt.Condition) // Evaluate the if-condition
+	if err != nil {
+		return nil, err
+	}
+	if IsTruthy(evaluatedExpr) {
+		_, err = i.exec(stmt.ThenBranch)
+		if err != nil {
+			return nil, err
+		}
+	} else if stmt.ElseBranch != nil {
+		_, err = i.exec(stmt.ElseBranch)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
+}
+
 // VisitAssign handles assignment expressions in the AST.
 // It evaluates the right-hand side value, then assigns it to the variable in the current Environment.
 // Returns the assigned value and any error encountered during evaluation or assignment.
@@ -285,11 +304,21 @@ func isEqual(left, right any) bool {
 	return left == right
 }
 func IsTruthy(object any) bool {
-	if object == nil {
+
+	switch v := object.(type) {
+	case nil:
+		return false
+	case string:
+		return len(v) > 0
+	case int:
+		return v > 0 || v < 0
+	case bool:
+		return v
+	case float64:
+		return v > 0.0
+	default:
 		return false
 	}
-	isBoolean, ok := object.(bool)
-	return ok && isBoolean
 }
 
 func stringify(object any) string {

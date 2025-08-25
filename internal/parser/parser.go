@@ -95,6 +95,9 @@ func (parser *Parser) varDeclaration() (ast.Stmt, error) {
 // If not, it assumes the statement is an expression statement and parses it
 // accordingly. Returns an error if parsing fails at any stage.
 func (parser *Parser) statement() (ast.Stmt, error) {
+	if parser.match(token.IF) {
+		return parser.ifStatement()
+	}
 	if parser.match(token.PRINT) {
 		printStatement, err := parser.printStatement()
 		if err != nil {
@@ -115,6 +118,38 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 		return nil, err
 	}
 	return ast.ExpressionStmt{Expression: expressionStmt}, nil
+}
+
+func (parser *Parser) ifStatement() (ast.Stmt, error) {
+	_, err := parser.consume(token.LEFT_PAREN, "Expect '(' after 'if'.")
+	if err != nil {
+		return nil, err
+	}
+	condition, err := parser.expression() // Parse If (expression)
+	if err != nil {
+		return nil, err
+	}
+	_, err = parser.consume(token.RIGHT_PAREN, "Expect ')' after if condition.")
+	if err != nil {
+		return nil, err
+	}
+
+	thenBranch, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
+
+	// proximity to the nearest if statement
+	var elseBranch ast.Stmt
+	if parser.match(token.ELSE) {
+		elseBranch, err = parser.statement()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ast.IfStmt{Condition: condition, ThenBranch: thenBranch, ElseBranch: elseBranch}, nil
+
 }
 
 // block parses n number of statements, starting from the "{" to the "}"

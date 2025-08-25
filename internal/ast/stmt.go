@@ -7,10 +7,21 @@ type StmtVisitor interface {
 	VisitPrintStmt(node PrintStmt) (any, error)
 	VisitVarStmt(node VarStmt) (any, error)
 	VisitBlockStmt(node Block) (any, error)
+	VisitIfStmt(node IfStmt) (any, error)
 }
 
 type Stmt interface {
 	Accept(visitor StmtVisitor) (any, error)
+}
+
+type IfStmt struct {
+	Condition  Expr
+	ThenBranch Stmt
+	ElseBranch Stmt
+}
+
+func (node IfStmt) Accept(visitor StmtVisitor) (any, error) {
+	return visitor.VisitIfStmt(node)
 }
 
 type Block struct {
