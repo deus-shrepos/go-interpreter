@@ -84,3 +84,20 @@ func (env *Environment) Assign(name token.Token, value any) error {
 		Message: fmt.Sprintf("Undefined variable %s.", name.Lexeme),
 	}
 }
+
+// Assign updates the value of an existing variable in the Environment.
+// If the variable with the given name exists, it sets its value to the provided one and returns nil.
+// If the variable does not exist, it returns an ExecutionError indicating the variable is undefined.
+func (env *Environment) Assign(name token.Token, value any) error {
+	_, containsKey := env.Values[name.Lexeme]
+	if containsKey {
+		env.Values[name.Lexeme] = value
+		return nil
+	}
+	return errors.ExecutionError{
+		Type:    errors.RUNTIME_ERROR,
+		Line:    name.Line,
+		Where:   name.Char,
+		Message: fmt.Sprintf("Undefined variable %s.", name.Lexeme),
+	}
+}
