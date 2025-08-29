@@ -205,7 +205,7 @@ func (parser *Parser) expression() (ast.Expr, error) {
 // Otherwise, it returns a parser error indicating an invalid assignment target.
 // Returns the constructed assignment expression or an error if parsing fails.
 func (parser *Parser) assignment() (ast.Expr, error) {
-	expr, err := parser.equality() // Parse the left-hand side with higher precedence
+	expr, err := parser.or()
 	if err != nil {
 		return nil, err
 	}
@@ -229,6 +229,39 @@ func (parser *Parser) assignment() (ast.Expr, error) {
 			Line:    equals.Line,
 			Where:   equals.Char,
 			Message: fmt.Sprintf("Unexpected token '%v'", equals.Lexeme),
+		}
+	}
+	return expr, nil
+}
+
+func (parser *Parser) or() (ast.Expr, error) {
+	expr, err := parser.and()
+	if err != nil {
+		return nil, err
+	}
+
+	for parser.match(token.OR) {
+		operator := parser.previous()
+		right, err := parser.and()
+		if err != nil {
+			return nil, err
+		}
+		expr = ast.Logical{Left: expr, Operator: operator, Right: right}
+	}
+	return expr, nil
+
+}
+
+func (parser *Parser) and() (ast.Expr, error) {
+	expr, err := parser.equality()
+	if err != nil {
+		return nil, err
+	}
+	for parser.match(token.AND) {
+		operator := parser.previous()
+		right, err := parser.equality()
+		if err != nil {
+			expr = ast.Logical{Left: expr, Operator: operator, Right: right}
 		}
 	}
 	return expr, nil

@@ -75,6 +75,10 @@ func (i *Interpreter) VisitVariable(expr ast.Variable) (any, error) {
 	return value, nil
 }
 
+// VisitIfStmt executes an if statement in the AST.
+// It evaluates the condition expression; if the result is truthy, it executes the then branch.
+// If the condition is not truthy and an else branch exists, it executes the else branch.
+// Returns nil and any error encountered during evaluation or execution.
 func (i *Interpreter) VisitIfStmt(stmt ast.IfStmt) (any, error) {
 	evaluatedExpr, err := i.eval(stmt.Condition) // Evaluate the if-condition
 	if err != nil {
@@ -204,6 +208,33 @@ func (i *Interpreter) execBlock(stmts []ast.Stmt, environment *Environment) (any
 	return nil, nil
 }
 
+// VisitLogical evaluates a logical expression (AND/OR) in the AST.
+// It first evaluates the left operand. For OR expressions, if the left operand is truthy,
+// it returns the left value immediately (short-circuit evaluation). For AND expressions,
+// if the left operand is not truthy, it returns the left value immediately.
+// Otherwise, it evaluates and returns the right operand.
+// Returns the result of the logical operation and any error encountered during evaluation.
+func (i *Interpreter) VisitLogical(expr ast.Logical) (any, error) {
+	left, err := i.eval(expr.Left)
+	if err != nil {
+		return nil, err
+	}
+	if token.OR == expr.Operator.Type {
+		if IsTruthy(left) {
+			return left, nil
+		}
+	} else {
+		if !IsTruthy(left) {
+			return left, nil
+		}
+	}
+	right, err := i.eval(expr.Right)
+	if err != nil {
+		return nil, err
+	}
+	return right, nil
+}
+
 // VisitBinary evaluates a binary expression by visiting its left and right operands
 // and applying the operator specified in the expression. It supports various operators
 // such as arithmetic, comparison, logical, and string concatenation.
@@ -304,7 +335,6 @@ func isEqual(left, right any) bool {
 	return left == right
 }
 func IsTruthy(object any) bool {
-
 	switch v := object.(type) {
 	case nil:
 		return false

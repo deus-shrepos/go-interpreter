@@ -11,10 +11,21 @@ type ExprVisitor interface {
 	VisitUnary(node Unary) (any, error)
 	VisitVariable(node Variable) (any, error)
 	VisitAssign(node Assign) (any, error)
+	VisitLogical(node Logical) (any, error)
 }
 
 type Expr interface {
 	Accept(visitor ExprVisitor) (any, error)
+}
+
+type Logical struct {
+	Left     Expr
+	Operator token.Token
+	Right    Expr
+}
+
+func (node Logical) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitLogical(node)
 }
 
 type Assign struct {
