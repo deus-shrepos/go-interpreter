@@ -105,6 +105,15 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 		}
 		return printStatement, nil
 	}
+
+	if parser.match(token.WHILE) {
+		whileStatement, err := parser.whileStatement()
+		if err != nil {
+			return nil, err
+		}
+		return whileStatement, nil
+
+	}
 	if parser.match(token.LEFT_BRACE) {
 		statementsBlock, err := parser.block()
 		if err != nil {
@@ -120,6 +129,44 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 	return ast.ExpressionStmt{Expression: expressionStmt}, nil
 }
 
+// whileStatement parses a "while" loop statement from the input tokens.
+// The method first consumes the opening parenthesis, parses the loop condition
+// as an expression, consumes the closing parenthesis, and then parses the loop body
+// as a statement. If any parsing step fails, it returns an error.
+// Returns an ast.WhileStmt node representing the loop, or an error if parsing fails.
+func (parser *Parser) whileStatement() (ast.Stmt, error) {
+	_, err := parser.consume(
+		token.LEFT_PAREN,
+		"Expect '(' after 'while'",
+	)
+	if err != nil {
+		return nil, err
+	}
+	expr, err := parser.expression()
+	if err != nil {
+		return nil, err
+	}
+	_, err = parser.consume(token.RIGHT_PAREN,
+		"Expect ')' after while condition",
+	)
+	if err != nil {
+		return nil, err
+	}
+	body, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
+	return ast.WhileStmt{Condition: expr, Body: body}, nil
+
+}
+
+// ifStatement parses an `if` statement from the token stream.
+// It expects the following structure:
+//   - `if` keyword followed by a condition in parentheses.
+//   - A statement for the `then` branch.
+//   - Optionally, an `else` keyword followed by a statement for the `else` branch.
+//
+// Returns an `ast.IfStmt` node representing the conditional statement, or an error if parsing fails.
 func (parser *Parser) ifStatement() (ast.Stmt, error) {
 	_, err := parser.consume(token.LEFT_PAREN, "Expect '(' after 'if'.")
 	if err != nil {
@@ -234,6 +281,10 @@ func (parser *Parser) assignment() (ast.Expr, error) {
 	return expr, nil
 }
 
+// or parses a logical OR expression.
+// It first parses the left-hand side using and(), then checks for any subsequent OR operators.
+// For each OR operator found, it parses the right-hand side and constructs a Logical AST node.
+// Returns the resulting expression or an error if parsing fails.
 func (parser *Parser) or() (ast.Expr, error) {
 	expr, err := parser.and()
 	if err != nil {
@@ -252,6 +303,10 @@ func (parser *Parser) or() (ast.Expr, error) {
 
 }
 
+// and parses a logical AND expression.
+// It first parses the left-hand side using equality(), then checks for any subsequent AND operators.
+// For each AND operator found, it parses the right-hand side and constructs a Logical AST node.
+// Returns the resulting expression or an error if parsing fails.
 func (parser *Parser) and() (ast.Expr, error) {
 	expr, err := parser.equality()
 	if err != nil {

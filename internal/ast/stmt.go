@@ -8,10 +8,20 @@ type StmtVisitor interface {
 	VisitVarStmt(node VarStmt) (any, error)
 	VisitBlockStmt(node Block) (any, error)
 	VisitIfStmt(node IfStmt) (any, error)
+	VisitWhileStmt(node WhileStmt) (any, error)
 }
 
 type Stmt interface {
 	Accept(visitor StmtVisitor) (any, error)
+}
+
+type WhileStmt struct {
+	Condition Expr
+	Body      Stmt
+}
+
+func (node WhileStmt) Accept(visitor StmtVisitor) (any, error) {
+	return visitor.VisitWhileStmt(node)
 }
 
 type IfStmt struct {

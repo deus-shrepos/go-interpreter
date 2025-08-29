@@ -235,6 +235,25 @@ func (i *Interpreter) VisitLogical(expr ast.Logical) (any, error) {
 	return right, nil
 }
 
+// VisitWhileStmt executes a while loop statement in the AST.
+// It first evaluates the loop condition. If the condition is truthy, it executes the loop body.
+// After each iteration, the condition is re-evaluated. The loop continues until the condition is no longer truthy.
+// Returns nil and any error encountered during evaluation or execution.
+func (i *Interpreter) VisitWhileStmt(expr ast.WhileStmt) (any, error) {
+	condition, err := i.eval(expr.Condition)
+	if err != nil {
+		return nil, err
+	}
+	for IsTruthy(condition) {
+		_, err := i.exec(expr.Body)
+		if err != nil {
+			return nil, err
+		}
+		condition, _ = i.eval(expr.Condition)
+	}
+	return nil, nil
+}
+
 // VisitBinary evaluates a binary expression by visiting its left and right operands
 // and applying the operator specified in the expression. It supports various operators
 // such as arithmetic, comparison, logical, and string concatenation.
@@ -282,25 +301,25 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return right.(float64) > left.(float64), nil
+		return left.(float64) > right.(float64), nil
 	case token.GREATER_EQUAL:
 		err := checkIfNumbers(left, right, expr.Operator)
 		if err != nil {
 			return nil, err
 		}
-		return right.(float64) >= left.(float64), nil
+		return left.(float64) >= right.(float64), nil
 	case token.LESS:
 		err := checkIfNumbers(left, right, expr.Operator)
 		if err != nil {
 			return nil, err
 		}
-		return right.(float64) < left.(float64), nil
+		return left.(float64) < right.(float64), nil
 	case token.LESS_EQUAL:
 		err := checkIfNumbers(left, right, expr.Operator)
 		if err != nil {
 			return nil, err
 		}
-		return right.(float64) <= left.(float64), nil
+		return left.(float64) <= right.(float64), nil
 	case token.BANG_EQUAL:
 		return !isEqual(left, right), nil
 	case token.EQUAL_EQUAL:
