@@ -58,7 +58,6 @@ func (parser *Parser) Declarations() (ast.Stmt, error) {
 	stmt, err := parser.statement()
 	if err != nil {
 		parser.synchronize()
-		return nil, err
 	}
 	return stmt, err
 
@@ -129,11 +128,6 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 	return ast.ExpressionStmt{Expression: expressionStmt}, nil
 }
 
-// whileStatement parses a "while" loop statement from the input tokens.
-// The method first consumes the opening parenthesis, parses the loop condition
-// as an expression, consumes the closing parenthesis, and then parses the loop body
-// as a statement. If any parsing step fails, it returns an error.
-// Returns an ast.WhileStmt node representing the loop, or an error if parsing fails.
 func (parser *Parser) whileStatement() (ast.Stmt, error) {
 	_, err := parser.consume(
 		token.LEFT_PAREN,
@@ -159,14 +153,6 @@ func (parser *Parser) whileStatement() (ast.Stmt, error) {
 	return ast.WhileStmt{Condition: expr, Body: body}, nil
 
 }
-
-// ifStatement parses an `if` statement from the token stream.
-// It expects the following structure:
-//   - `if` keyword followed by a condition in parentheses.
-//   - A statement for the `then` branch.
-//   - Optionally, an `else` keyword followed by a statement for the `else` branch.
-//
-// Returns an `ast.IfStmt` node representing the conditional statement, or an error if parsing fails.
 func (parser *Parser) ifStatement() (ast.Stmt, error) {
 	_, err := parser.consume(token.LEFT_PAREN, "Expect '(' after 'if'.")
 	if err != nil {
@@ -256,6 +242,36 @@ func (parser *Parser) assignment() (ast.Expr, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if parser.match(token.INC) {
+
+		variable, isVariable := expr.(ast.Variable)
+		if isVariable {
+			operator := parser.previous()
+			_, err = parser.consume(token.SEMICOLON, "Expect ';' at end of the expression")
+			if err != nil {
+				return nil, err
+			}
+
+			return ast.Assign{Name: variable.Name,
+				Value: ast.Binary{
+					Left: ast.Variable{
+						Name: variable.Name,
+					},
+					Operator: operator,
+					Right: ast.Literal{
+						Value: float64(1),
+					},
+				}}, nil
+		}
+
+		return nil, errors.ExecutionError{
+			Type:    errors.PARSER_ERROR,
+			Line:    parser.previous().Line,
+			Where:   parser.previous().Char,
+			Message: fmt.Sprintf("Unexpected token '%v'", parser.previous().Lexeme),
+		}
+	}
 	// Parse right-hand side and then wrap it all up in an assignment expression tree node
 	if parser.match(token.EQUAL) {
 		equals := parser.previous()
@@ -281,10 +297,6 @@ func (parser *Parser) assignment() (ast.Expr, error) {
 	return expr, nil
 }
 
-// or parses a logical OR expression.
-// It first parses the left-hand side using and(), then checks for any subsequent OR operators.
-// For each OR operator found, it parses the right-hand side and constructs a Logical AST node.
-// Returns the resulting expression or an error if parsing fails.
 func (parser *Parser) or() (ast.Expr, error) {
 	expr, err := parser.and()
 	if err != nil {
@@ -303,10 +315,6 @@ func (parser *Parser) or() (ast.Expr, error) {
 
 }
 
-// and parses a logical AND expression.
-// It first parses the left-hand side using equality(), then checks for any subsequent AND operators.
-// For each AND operator found, it parses the right-hand side and constructs a Logical AST node.
-// Returns the resulting expression or an error if parsing fails.
 func (parser *Parser) and() (ast.Expr, error) {
 	expr, err := parser.equality()
 	if err != nil {

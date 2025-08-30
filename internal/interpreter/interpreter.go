@@ -235,10 +235,6 @@ func (i *Interpreter) VisitLogical(expr ast.Logical) (any, error) {
 	return right, nil
 }
 
-// VisitWhileStmt executes a while loop statement in the AST.
-// It first evaluates the loop condition. If the condition is truthy, it executes the loop body.
-// After each iteration, the condition is re-evaluated. The loop continues until the condition is no longer truthy.
-// Returns nil and any error encountered during evaluation or execution.
 func (i *Interpreter) VisitWhileStmt(expr ast.WhileStmt) (any, error) {
 	condition, err := i.eval(expr.Condition)
 	if err != nil {
@@ -283,7 +279,11 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 			return nil, err
 		}
 		return right.(float64) + left.(float64), nil
+	case token.INC:
+		return left.(float64) + right.(float64), nil
 
+	case token.DEC:
+		return left.(float64) - right.(float64), nil
 	case token.SLASH:
 		err := checkIfNumbers(left, right, expr.Operator)
 		if err != nil {
