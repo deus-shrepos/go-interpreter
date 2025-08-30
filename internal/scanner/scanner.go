@@ -72,9 +72,17 @@ func (scanner *TokenScanner) ScanToken() error {
 	case ".":
 		scanner.AddToken(token.DOT)
 	case "-":
-		scanner.AddToken(token.MINUS)
+		minus := token.MINUS
+		if scanner.match("-") {
+			minus = token.DEC
+		}
+		scanner.AddToken(minus)
 	case "+":
-		scanner.AddToken(token.PLUS)
+		plus := token.PLUS
+		if scanner.match("+") {
+			plus = token.INC
+		}
+		scanner.AddToken(plus)
 	case ";":
 		scanner.AddToken(token.SEMICOLON)
 	case "*":
@@ -216,6 +224,10 @@ func (scanner *TokenScanner) match(expected string) bool {
 	}
 	scanner.Current++
 	return true
+}
+
+func (scanner *TokenScanner) skip() {
+	scanner.Start++
 }
 
 // peek Peeks at the end of the string and returns it
