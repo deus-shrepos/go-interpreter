@@ -18,13 +18,31 @@ while (i < 10){
 }
 
 // Conditionals
-
 print "If conditional \n";
 var state = true;
 if (state){
 	print "State is on!\n";
-}else{
-	print "State is off!";
+else{
+	print "State is off!\n";
 }
 
+// For loops
+for (var i = 0; i < 10; i = i+1;){
+    print i;
+    print "\n";
+}
+
+print "RUNNING WITH BREAK\n\n";
+// Break and Continue statements
+var i = 10;
+while (i < 20){
+	if(i==15){
+		print "BABE, WE NEED BREAK UP. I AM SORRY. \n";
+		break;
+		print "DID WE ACTUALL BREAK UP?";
+	}
+	print i;
+	print "\n";
+	i++;
+}
 

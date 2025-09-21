@@ -10,5 +10,5 @@ import (
 
 func main() {
 	r := repl.NewRepl()
-	r.LoadProgram("examples/program.txt")
+	r.LoadProgram("examples/while_stmts.txt")
 }
