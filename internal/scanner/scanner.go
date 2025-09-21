@@ -226,10 +226,6 @@ func (scanner *TokenScanner) match(expected string) bool {
 	return true
 }
 
-func (scanner *TokenScanner) skip() {
-	scanner.Start++
-}
-
 // peek Peeks at the end of the string and returns it
 // if it is at the end of the line, we return "\0" line end delimiter
 // otherwise we return the current character
