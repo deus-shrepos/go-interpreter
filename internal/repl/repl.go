@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	// "github.com/go-interpreter/internal/interpreter"
 	"github.com/go-interpreter/internal/interpreter"
 	"github.com/go-interpreter/internal/scanner"
 
@@ -52,7 +53,8 @@ func (repl *Repl) run(tokenScanner *scanner.TokenScanner) {
 	_ = tokenScanner.ScanTokens()
 	p := parser.NewParser(tokenScanner.Tokens)
 	inter := interpreter.NewInterpreter()
-	err := inter.Interpret(p.Parse())
+	parsedStatments := p.Parse()
+	err := inter.Interpret(parsedStatments)
 	if err != nil {
 		repl.HadError = true
 		fmt.Println(err)
