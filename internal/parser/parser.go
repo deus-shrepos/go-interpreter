@@ -13,8 +13,9 @@ import (
 // Abstract Syntax Tree (AST). It keeps track of the tokens to
 // be parsed and the current position within the token stream.
 type Parser struct {
-	Tokens  []token.Token
-	Current int
+	Tokens    []token.Token
+	Current   int
+	loopDepth int
 }
 
 // NewParser creates a new instance of the Parser struct with the provided
@@ -23,7 +24,8 @@ type Parser struct {
 // parsing operations.
 func NewParser(tokens []token.Token) Parser {
 	return Parser{
-		Tokens: tokens,
+		Tokens:    tokens,
+		loopDepth: 0,
 	}
 }
 
@@ -113,6 +115,44 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 		return whileStatement, nil
 
 	}
+	if parser.match(token.FOR) {
+		forStatement, err := parser.forStatement()
+		if err != nil {
+			return nil, err
+		}
+		return forStatement, nil
+	}
+	if parser.match(token.BREAK) {
+		if parser.loopDepth == 0 {
+			return nil, errors.ExecutionError{
+				Type:    errors.PARSER_ERROR,
+				Line:    parser.previous().Line,
+				Where:   parser.previous().Char,
+				Message: "'break' not inside the loop",
+			}
+		}
+		breakStatement, err := parser.breakStatement()
+		if err != nil {
+			return nil, err
+		}
+		return breakStatement, nil
+	}
+	if parser.match(token.CONTINUE) {
+		if parser.loopDepth == 0 {
+			return nil, errors.ExecutionError{
+				Type:    errors.PARSER_ERROR,
+				Line:    parser.previous().Line,
+				Where:   parser.previous().Char,
+				Message: "'continue' not inside the loop",
+			}
+		}
+		continueStatement, err := parser.continueStatement()
+		if err != nil {
+			return nil, err
+		}
+		return continueStatement, nil
+	}
+
 	if parser.match(token.LEFT_BRACE) {
 		statementsBlock, err := parser.block()
 		if err != nil {
@@ -126,6 +166,122 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 		return nil, err
 	}
 	return ast.ExpressionStmt{Expression: expressionStmt}, nil
+}
+
+// breakStatement parses a 'break' statement in the source code.
+// It expects a terminating semicolon after the 'break' keyword.
+// Returns an AST node representing the break statement or an error if parsing fails.
+func (parser *Parser) breakStatement() (ast.Stmt, error) {
+	_, err := parser.consume(token.SEMICOLON, "Expect ';' at the end of the break statement.")
+	if err != nil {
+		return nil, err
+	}
+	return ast.BreakStmt{}, nil
+}
+
+// continueStatement parses a 'continue' statement in the source code.
+// It expects a terminating semicolon after the 'continue' keyword.
+// Returns an AST node representing the continue statement or an error if parsing fails.
+func (parser *Parser) continueStatement() (ast.Stmt, error) {
+	_, err := parser.consume(token.SEMICOLON, "Expect ';' at the end of the Continue statement.'")
+	if err != nil {
+		return nil, err
+	}
+	return ast.ContinueStmt{}, nil
+}
+
+// forStatement Parses an for statement and then converts that
+// in a while statement. It "desugars" the for loop back into a
+// while loop.
+func (parser *Parser) forStatement() (ast.Stmt, error) {
+	_, err := parser.consume(token.LEFT_PAREN, "Except '(' aftger 'for'.")
+	if err != nil {
+		return nil, err
+	}
+
+	var initialiser ast.Stmt
+	if parser.match(token.SEMICOLON) {
+		// No initaliser
+		initialiser = nil
+	} else if parser.match(token.VAR) {
+		initialiser, err = parser.varDeclaration()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		initialiser, err = parser.statement()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var condition ast.Expr = nil
+	if !parser.check(token.SEMICOLON) {
+		condition, err = parser.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	_, err = parser.consume(token.SEMICOLON, "Expect ';' after the loop condition.")
+	if err != nil {
+		return nil, err
+	}
+
+	var increment ast.Expr = nil
+	if !parser.check(token.RIGHT_PAREN) {
+		increment, err = parser.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = parser.consume(
+		token.RIGHT_PAREN,
+		"Expect ')' after the for clauses.",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
+
+	// De-sugaring begins here
+	if increment != nil {
+		// for(var i = 0; i < 10;)
+		body = ast.Block{
+			Statements: []ast.Stmt{
+				body,
+				ast.ExpressionStmt{
+					Expression: increment,
+				},
+			},
+		}
+	}
+
+	if condition == nil {
+		condition = ast.Literal{
+			Value: true,
+		}
+	}
+
+	body = ast.WhileStmt{
+		Condition: condition,
+		Body:      body,
+	}
+
+	// variable will be initialised in the block
+	if initialiser != nil {
+		body = ast.Block{
+			Statements: []ast.Stmt{
+				initialiser,
+				body,
+			},
+		}
+	}
+	return body, err
 }
 
 func (parser *Parser) whileStatement() (ast.Stmt, error) {
@@ -146,10 +302,13 @@ func (parser *Parser) whileStatement() (ast.Stmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	// This is to track the `break` and `continue`
+	parser.loopDepth += 1
 	body, err := parser.statement()
 	if err != nil {
 		return nil, err
 	}
+	parser.loopDepth -= 1
 	return ast.WhileStmt{Condition: expr, Body: body}, nil
 
 }
