@@ -22,7 +22,7 @@ print "If conditional \n";
 var state = true;
 if (state){
 	print "State is on!\n";
-else{
+}else{
 	print "State is off!\n";
 }
 
