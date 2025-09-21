@@ -28,6 +28,10 @@ const (
 	LESS
 	LESS_EQUAL
 
+	// INC/DEC
+	INC
+	DEC
+
 	// IDENTIFIER LITERALS (WHATEVER IT IS, IT IS)
 	IDENTIFIER
 	STRING
@@ -52,6 +56,8 @@ const (
 
 	// WHILE represents the 'while' keyword in the language, used for defining looping constructs within the code.
 	WHILE
+	BREAK
+	CONTINUE
 
 	// MISC
 	EOF
@@ -59,20 +65,22 @@ const (
 
 // Keywords is a map linking string representations of language keywords to their corresponding TokenType values.
 var Keywords = map[string]TokenType{
-	"and":    AND,
-	"or":     OR,
-	"class":  CLASS,
-	"false":  FALSE,
-	"for":    FOR,
-	"fun":    FUN,
-	"if":     IF,
-	"nil":    NIL,
-	"print":  PRINT,
-	"return": RETURN,
-	"super":  SUPER,
-	"true":   TRUE,
-	"var":    VAR,
-	"while":  WHILE,
-	"this":   THIS,
-	"else":   ELSE,
+	"and":      AND,
+	"or":       OR,
+	"class":    CLASS,
+	"false":    FALSE,
+	"for":      FOR,
+	"fun":      FUN,
+	"if":       IF,
+	"nil":      NIL,
+	"print":    PRINT,
+	"return":   RETURN,
+	"super":    SUPER,
+	"true":     TRUE,
+	"var":      VAR,
+	"while":    WHILE,
+	"this":     THIS,
+	"else":     ELSE,
+	"break":    BREAK,
+	"continue": CONTINUE,
 }

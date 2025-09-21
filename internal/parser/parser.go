@@ -13,8 +13,9 @@ import (
 // Abstract Syntax Tree (AST). It keeps track of the tokens to
 // be parsed and the current position within the token stream.
 type Parser struct {
-	Tokens  []token.Token
-	Current int
+	Tokens    []token.Token
+	Current   int
+	loopDepth int
 }
 
 // NewParser creates a new instance of the Parser struct with the provided
@@ -23,7 +24,8 @@ type Parser struct {
 // parsing operations.
 func NewParser(tokens []token.Token) Parser {
 	return Parser{
-		Tokens: tokens,
+		Tokens:    tokens,
+		loopDepth: 0,
 	}
 }
 
@@ -58,7 +60,6 @@ func (parser *Parser) Declarations() (ast.Stmt, error) {
 	stmt, err := parser.statement()
 	if err != nil {
 		parser.synchronize()
-		return nil, err
 	}
 	return stmt, err
 
@@ -95,6 +96,9 @@ func (parser *Parser) varDeclaration() (ast.Stmt, error) {
 // If not, it assumes the statement is an expression statement and parses it
 // accordingly. Returns an error if parsing fails at any stage.
 func (parser *Parser) statement() (ast.Stmt, error) {
+	if parser.match(token.IF) {
+		return parser.ifStatement()
+	}
 	if parser.match(token.PRINT) {
 		printStatement, err := parser.printStatement()
 		if err != nil {
@@ -102,6 +106,53 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 		}
 		return printStatement, nil
 	}
+
+	if parser.match(token.WHILE) {
+		whileStatement, err := parser.whileStatement()
+		if err != nil {
+			return nil, err
+		}
+		return whileStatement, nil
+
+	}
+	if parser.match(token.FOR) {
+		forStatement, err := parser.forStatement()
+		if err != nil {
+			return nil, err
+		}
+		return forStatement, nil
+	}
+	if parser.match(token.BREAK) {
+		if parser.loopDepth == 0 {
+			return nil, errors.ExecutionError{
+				Type:    errors.PARSER_ERROR,
+				Line:    parser.previous().Line,
+				Where:   parser.previous().Char,
+				Message: "'break' not inside the loop",
+			}
+		}
+		breakStatement, err := parser.breakStatement()
+		if err != nil {
+			return nil, err
+		}
+		return breakStatement, nil
+	}
+	if parser.match(token.CONTINUE) {
+		if parser.loopDepth == 0 {
+			return nil, errors.ExecutionError{
+				Type:    errors.PARSER_ERROR,
+				Line:    parser.previous().Line,
+				Where:   parser.previous().Char,
+				Message: "'continue' not inside the loop",
+			}
+		}
+		continueStatement, err := parser.continueStatement()
+		if err != nil {
+			return nil, err
+		}
+		return continueStatement, nil
+	}
+
 	if parser.match(token.LEFT_BRACE) {
 		statementsBlock, err := parser.block()
 		if err != nil {
@@ -115,6 +166,182 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 		return nil, err
 	}
 	return ast.ExpressionStmt{Expression: expressionStmt}, nil
+}
+
+// breakStatement parses a 'break' statement in the source code.
+// It expects a terminating semicolon after the 'break' keyword.
+// Returns an AST node representing the break statement or an error if parsing fails.
+func (parser *Parser) breakStatement() (ast.Stmt, error) {
+	_, err := parser.consume(token.SEMICOLON, "Expect ';' at the end of the break statement.")
+	if err != nil {
+		return nil, err
+	}
+	return ast.BreakStmt{}, nil
+}
+
+// continueStatement parses a 'continue' statement in the source code.
+// It expects a terminating semicolon after the 'continue' keyword.
+// Returns an AST node representing the continue statement or an error if parsing fails.
+func (parser *Parser) continueStatement() (ast.Stmt, error) {
+	_, err := parser.consume(token.SEMICOLON, "Expect ';' at the end of the Continue statement.'")
+	if err != nil {
+		return nil, err
+	}
+	return ast.ContinueStmt{}, nil
+}
+
+// forStatement Parses an for statement and then converts that
+// in a while statement. It "desugars" the for loop back into a
+// while loop.
+func (parser *Parser) forStatement() (ast.Stmt, error) {
+	_, err := parser.consume(token.LEFT_PAREN, "Except '(' aftger 'for'.")
+	if err != nil {
+		return nil, err
+	}
+
+	var initialiser ast.Stmt
+	if parser.match(token.SEMICOLON) {
+		// No initaliser
+		initialiser = nil
+	} else if parser.match(token.VAR) {
+		initialiser, err = parser.varDeclaration()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		initialiser, err = parser.statement()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var condition ast.Expr = nil
+	if !parser.check(token.SEMICOLON) {
+		condition, err = parser.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	_, err = parser.consume(token.SEMICOLON, "Expect ';' after the loop condition.")
+	if err != nil {
+		return nil, err
+	}
+
+	var increment ast.Expr = nil
+	if !parser.check(token.RIGHT_PAREN) {
+		increment, err = parser.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = parser.consume(
+		token.RIGHT_PAREN,
+		"Expect ')' after the for clauses.",
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
+
+	// De-sugaring begins here
+	if increment != nil {
+		// for(var i = 0; i < 10;)
+		body = ast.Block{
+			Statements: []ast.Stmt{
+				body,
+				ast.ExpressionStmt{
+					Expression: increment,
+				},
+			},
+		}
+	}
+
+	if condition == nil {
+		condition = ast.Literal{
+			Value: true,
+		}
+	}
+
+	body = ast.WhileStmt{
+		Condition: condition,
+		Body:      body,
+	}
+
+	// variable will be initialised in the block
+	if initialiser != nil {
+		body = ast.Block{
+			Statements: []ast.Stmt{
+				initialiser,
+				body,
+			},
+		}
+	}
+	return body, err
+}
+
+func (parser *Parser) whileStatement() (ast.Stmt, error) {
+	_, err := parser.consume(
+		token.LEFT_PAREN,
+		"Expect '(' after 'while'",
+	)
+	if err != nil {
+		return nil, err
+	}
+	expr, err := parser.expression()
+	if err != nil {
+		return nil, err
+	}
+	_, err = parser.consume(token.RIGHT_PAREN,
+		"Expect ')' after while condition",
+	)
+	if err != nil {
+		return nil, err
+	}
+	// This is to track the `break` and `continue`
+	parser.loopDepth += 1
+	body, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
+	parser.loopDepth -= 1
+	return ast.WhileStmt{Condition: expr, Body: body}, nil
+
+}
+func (parser *Parser) ifStatement() (ast.Stmt, error) {
+	_, err := parser.consume(token.LEFT_PAREN, "Expect '(' after 'if'.")
+	if err != nil {
+		return nil, err
+	}
+	condition, err := parser.expression() // Parse If (expression)
+	if err != nil {
+		return nil, err
+	}
+	_, err = parser.consume(token.RIGHT_PAREN, "Expect ')' after if condition.")
+	if err != nil {
+		return nil, err
+	}
+
+	thenBranch, err := parser.statement()
+	if err != nil {
+		return nil, err
+	}
+
+	// proximity to the nearest if statement
+	var elseBranch ast.Stmt
+	if parser.match(token.ELSE) {
+		elseBranch, err = parser.statement()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return ast.IfStmt{Condition: condition, ThenBranch: thenBranch, ElseBranch: elseBranch}, nil
+
 }
 
 // block parses n number of statements, starting from the "{" to the "}"
@@ -170,9 +397,39 @@ func (parser *Parser) expression() (ast.Expr, error) {
 // Otherwise, it returns a parser error indicating an invalid assignment target.
 // Returns the constructed assignment expression or an error if parsing fails.
 func (parser *Parser) assignment() (ast.Expr, error) {
-	expr, err := parser.equality() // Parse the left-hand side with higher precedence
+	expr, err := parser.or()
 	if err != nil {
 		return nil, err
+	}
+
+	if parser.match(token.INC) {
+
+		variable, isVariable := expr.(ast.Variable)
+		if isVariable {
+			operator := parser.previous()
+			_, err = parser.consume(token.SEMICOLON, "Expect ';' at end of the expression")
+			if err != nil {
+				return nil, err
+			}
+
+			return ast.Assign{Name: variable.Name,
+				Value: ast.Binary{
+					Left: ast.Variable{
+						Name: variable.Name,
+					},
+					Operator: operator,
+					Right: ast.Literal{
+						Value: float64(1),
+					},
+				}}, nil
+		}
+
+		return nil, errors.ExecutionError{
+			Type:    errors.PARSER_ERROR,
+			Line:    parser.previous().Line,
+			Where:   parser.previous().Char,
+			Message: fmt.Sprintf("Unexpected token '%v'", parser.previous().Lexeme),
+		}
 	}
 	// Parse right-hand side and then wrap it all up in an assignment expression tree node
 	if parser.match(token.EQUAL) {
@@ -194,6 +451,39 @@ func (parser *Parser) assignment() (ast.Expr, error) {
 			Line:    equals.Line,
 			Where:   equals.Char,
 			Message: fmt.Sprintf("Unexpected token '%v'", equals.Lexeme),
+		}
+	}
+	return expr, nil
+}
+
+func (parser *Parser) or() (ast.Expr, error) {
+	expr, err := parser.and()
+	if err != nil {
+		return nil, err
+	}
+
+	for parser.match(token.OR) {
+		operator := parser.previous()
+		right, err := parser.and()
+		if err != nil {
+			return nil, err
+		}
+		expr = ast.Logical{Left: expr, Operator: operator, Right: right}
+	}
+	return expr, nil
+
+}
+
+func (parser *Parser) and() (ast.Expr, error) {
+	expr, err := parser.equality()
+	if err != nil {
+		return nil, err
+	}
+	for parser.match(token.AND) {
+		operator := parser.previous()
+		right, err := parser.equality()
+		if err != nil {
+			expr = ast.Logical{Left: expr, Operator: operator, Right: right}
 		}
 	}
 	return expr, nil

@@ -4,13 +4,21 @@ import (
 	"fmt"
 	"os"
 
+	// "github.com/go-interpreter/internal/interpreter"
+	"github.com/go-interpreter/internal/interpreter"
 	"github.com/go-interpreter/internal/scanner"
 
 	parser "github.com/go-interpreter/internal/parser"
 )
 
+// TODO(ME): NEED TO MAKE BETTER. COMING SOON.
 type Repl struct {
 	HadError bool
+}
+
+func NewRepl() *Repl {
+	return &Repl{}
+
 }
 
 func (repl *Repl) LoadProgram(path string) {
@@ -35,20 +43,25 @@ func (repl *Repl) loadProgram(path string) error {
 		return err
 	}
 	// We store that byte file for scanning
-	tokenScanner := scanner.TokenScanner{Source: string(file)}
-	repl.run(tokenScanner)
+	tokenScanner := scanner.NewTokenScanner(string(file))
+	repl.run(&tokenScanner)
 	return nil
 }
 
 // This your token scanner for the program
-func (repl *Repl) run(tokenScanner scanner.TokenScanner) {
-	tokens := tokenScanner.ScanTokens()
-	parser := parser.Parser{Tokens: tokens}
-	expr, _ := parser.Parse()
+func (repl *Repl) run(tokenScanner *scanner.TokenScanner) {
+	_ = tokenScanner.ScanTokens()
+	p := parser.NewParser(tokenScanner.Tokens)
+	inter := interpreter.NewInterpreter()
+	parsedStatments := p.Parse()
+	err := inter.Interpret(parsedStatments)
+	if err != nil {
+		repl.HadError = true
+		fmt.Println(err)
+	}
 	if repl.HadError {
 		return
 	}
-	fmt.Print(expr) // for now
 	// astPrinter := printer.PrintAST{}
 	// astPrinter.Print(expr)
 }

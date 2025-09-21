@@ -75,6 +75,33 @@ func (i *Interpreter) VisitVariable(expr ast.Variable) (any, error) {
 	return value, nil
 }
 
+// VisitIfStmt executes an if statement in the AST.
+// It evaluates the condition expression; if the result is truthy, it executes the then branch.
+// If the condition is not truthy and an else branch exists, it executes the else branch.
+// Returns nil and any error encountered during evaluation or execution.
+func (i *Interpreter) VisitIfStmt(stmt ast.IfStmt) (any, error) {
+	evaluatedExpr, err := i.eval(stmt.Condition) // Evaluate the if-condition
+	if err != nil {
+		return nil, err
+	}
+	var signal any
+	if IsTruthy(evaluatedExpr) {
+		signal, err = i.exec(stmt.ThenBranch)
+	} else if stmt.ElseBranch != nil {
+		signal, err = i.exec(stmt.ElseBranch)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if control, ok := signal.(ControlSig); ok {
+		return control, nil
+	}
+
+	return nil, nil
+
+}
+
 // VisitAssign handles assignment expressions in the AST.
 // It evaluates the right-hand side value, then assigns it to the variable in the current Environment.
 // Returns the assigned value and any error encountered during evaluation or assignment.
@@ -95,9 +122,13 @@ func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
 // that variables declared inside the block do not affect the outer environment.
 // Returns nil and any error encountered during execution.
 func (i *Interpreter) VisitBlockStmt(blockStmt ast.Block) (any, error) {
-	_, err := i.execBlock(blockStmt.Statements, NewEnvironment(i.environment))
+	s, err := i.execBlock(blockStmt.Statements, NewEnvironment(i.environment))
 	if err != nil {
 		return nil, err
+	}
+
+	if control, ok := s.(ControlSig); ok {
+		return control, nil
 	}
 	return nil, nil
 }
@@ -175,14 +206,84 @@ func (i *Interpreter) exec(stmt ast.Stmt) (any, error) {
 func (i *Interpreter) execBlock(stmts []ast.Stmt, environment *Environment) (any, error) {
 	previous := i.environment
 	i.environment = environment
+	defer func() { i.environment = previous }() // Always make sure we get the environments right to avoid recursion bugs
+	var sig any
 	for _, stmt := range stmts {
-		_, err := i.exec(stmt)
+		s, err := i.exec(stmt)
 		if err != nil {
 			return nil, err
 		}
+		if control, ok := s.(ControlSig); ok {
+			sig = control
+			// We do not run the rest of the statements
+			if control == CONTINUE || control == BREAK {
+				break
+			}
+		}
 	}
-	i.environment = previous
+	return sig, nil
+}
+
+// VisitLogical evaluates a logical expression (AND/OR) in the AST.
+// It first evaluates the left operand. For OR expressions, if the left operand is truthy,
+// it returns the left value immediately (short-circuit evaluation). For AND expressions,
+// if the left operand is not truthy, it returns the left value immediately.
+// Otherwise, it evaluates and returns the right operand.
+// Returns the result of the logical operation and any error encountered during evaluation.
+func (i *Interpreter) VisitLogical(expr ast.Logical) (any, error) {
+	left, err := i.eval(expr.Left)
+	if err != nil {
+		return nil, err
+	}
+	if token.OR == expr.Operator.Type {
+		if IsTruthy(left) {
+			return left, nil
+		}
+	} else {
+		if !IsTruthy(left) {
+			return left, nil
+		}
+	}
+	right, err := i.eval(expr.Right)
+	if err != nil {
+		return nil, err
+	}
+	return right, nil
+}
+
+func (i *Interpreter) VisitWhileStmt(expr ast.WhileStmt) (any, error) {
+	condition, err := i.eval(expr.Condition)
+	if err != nil {
+		return nil, err
+	}
+	for IsTruthy(condition) {
+		s, err := i.exec(expr.Body)
+		if err != nil {
+			return nil, err
+		}
+		if control, ok := s.(ControlSig); ok {
+			if control == BREAK {
+				break
+			}
+		}
+		condition, _ = i.eval(expr.Condition)
+	}
 	return nil, nil
+}
+
+// VisitBreakStmt handles the execution of a break statement in the AST.
+// It returns the BREAK control signal, which is used to exit loops during interpretation.
+// The function does not return an error.
+func (i *Interpreter) VisitBreakStmt() (any, error) {
+	return BREAK, nil
+}
+
+// VisitContinueStmt handles the execution of a continue statement in the AST.
+// It returns the CONTINUE control signal, which is used to skip the current iteration
+// and continue with the next iteration of a loop during interpretation.
+// The function does not return an error.
+func (i *Interpreter) VisitContinueStmt() (any, error) {
+	return CONTINUE, nil
 }
 
 // VisitBinary evaluates a binary expression by visiting its left and right operands
@@ -200,6 +301,11 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 			if rightValue, ok := right.(string); ok {
 				return leftValue + rightValue, nil
 			}
+			err := checkIfNumber(right, expr.Operator)
+			if err != nil {
+				return nil, err
+			}
+			return leftValue + strconv.FormatFloat(right.(float64), 'g', -1, 64), nil
 		}
 		if rightValue, ok := right.(string); ok {
 			// We know that the right is a string, so we need to check if the left is a number
@@ -207,14 +313,18 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			return rightValue + fmt.Sprintf("%v", left.(float64)), nil
+			return rightValue + strconv.FormatFloat(left.(float64), 'g', -1, 64), nil
 		}
 		err := checkIfNumbers(left, right, expr.Operator)
 		if err != nil {
 			return nil, err
 		}
 		return right.(float64) + left.(float64), nil
+	case token.INC:
+		return left.(float64) + right.(float64), nil
 
+	case token.DEC:
+		return left.(float64) - right.(float64), nil
 	case token.SLASH:
 		err := checkIfNumbers(left, right, expr.Operator)
 		if err != nil {
@@ -232,25 +342,25 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return right.(float64) > left.(float64), nil
+		return left.(float64) > right.(float64), nil
 	case token.GREATER_EQUAL:
 		err := checkIfNumbers(left, right, expr.Operator)
 		if err != nil {
 			return nil, err
 		}
-		return right.(float64) >= left.(float64), nil
+		return left.(float64) >= right.(float64), nil
 	case token.LESS:
 		err := checkIfNumbers(left, right, expr.Operator)
 		if err != nil {
 			return nil, err
 		}
-		return right.(float64) < left.(float64), nil
+		return left.(float64) < right.(float64), nil
 	case token.LESS_EQUAL:
 		err := checkIfNumbers(left, right, expr.Operator)
 		if err != nil {
 			return nil, err
 		}
-		return right.(float64) <= left.(float64), nil
+		return left.(float64) <= right.(float64), nil
 	case token.BANG_EQUAL:
 		return !isEqual(left, right), nil
 	case token.EQUAL_EQUAL:
@@ -285,11 +395,20 @@ func isEqual(left, right any) bool {
 	return left == right
 }
 func IsTruthy(object any) bool {
-	if object == nil {
+	switch v := object.(type) {
+	case nil:
+		return false
+	case string:
+		return len(v) > 0
+	case int:
+		return v > 0 || v < 0
+	case bool:
+		return v
+	case float64:
+		return v > 0.0
+	default:
 		return false
 	}
-	isBoolean, ok := object.(bool)
-	return ok && isBoolean
 }
 
 func stringify(object any) string {
