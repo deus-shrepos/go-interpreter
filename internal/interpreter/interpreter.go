@@ -84,18 +84,22 @@ func (i *Interpreter) VisitIfStmt(stmt ast.IfStmt) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	var signal any
 	if IsTruthy(evaluatedExpr) {
-		_, err = i.exec(stmt.ThenBranch)
-		if err != nil {
-			return nil, err
-		}
+		signal, err = i.exec(stmt.ThenBranch)
 	} else if stmt.ElseBranch != nil {
-		_, err = i.exec(stmt.ElseBranch)
-		if err != nil {
-			return nil, err
-		}
+		signal, err = i.exec(stmt.ElseBranch)
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	if control, ok := signal.(ControlSig); ok {
+		return control, nil
+	}
+
 	return nil, nil
+
 }
 
 // VisitAssign handles assignment expressions in the AST.
@@ -118,9 +122,13 @@ func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
 // that variables declared inside the block do not affect the outer environment.
 // Returns nil and any error encountered during execution.
 func (i *Interpreter) VisitBlockStmt(blockStmt ast.Block) (any, error) {
-	_, err := i.execBlock(blockStmt.Statements, NewEnvironment(i.environment))
+	s, err := i.execBlock(blockStmt.Statements, NewEnvironment(i.environment))
 	if err != nil {
 		return nil, err
+	}
+
+	if control, ok := s.(ControlSig); ok {
+		return control, nil
 	}
 	return nil, nil
 }
@@ -198,14 +206,22 @@ func (i *Interpreter) exec(stmt ast.Stmt) (any, error) {
 func (i *Interpreter) execBlock(stmts []ast.Stmt, environment *Environment) (any, error) {
 	previous := i.environment
 	i.environment = environment
+	defer func() { i.environment = previous }() // Always make sure we get the environments right to avoid recursion bugs
+	var sig any
 	for _, stmt := range stmts {
-		_, err := i.exec(stmt)
+		s, err := i.exec(stmt)
 		if err != nil {
 			return nil, err
 		}
+		if control, ok := s.(ControlSig); ok {
+			sig = control
+			// We do not run the rest of the statements
+			if control == CONTINUE || control == BREAK {
+				break
+			}
+		}
 	}
-	i.environment = previous
-	return nil, nil
+	return sig, nil
 }
 
 // VisitLogical evaluates a logical expression (AND/OR) in the AST.
@@ -241,13 +257,33 @@ func (i *Interpreter) VisitWhileStmt(expr ast.WhileStmt) (any, error) {
 		return nil, err
 	}
 	for IsTruthy(condition) {
-		_, err := i.exec(expr.Body)
+		s, err := i.exec(expr.Body)
 		if err != nil {
 			return nil, err
+		}
+		if control, ok := s.(ControlSig); ok {
+			if control == BREAK {
+				break
+			}
 		}
 		condition, _ = i.eval(expr.Condition)
 	}
 	return nil, nil
+}
+
+// VisitBreakStmt handles the execution of a break statement in the AST.
+// It returns the BREAK control signal, which is used to exit loops during interpretation.
+// The function does not return an error.
+func (i *Interpreter) VisitBreakStmt() (any, error) {
+	return BREAK, nil
+}
+
+// VisitContinueStmt handles the execution of a continue statement in the AST.
+// It returns the CONTINUE control signal, which is used to skip the current iteration
+// and continue with the next iteration of a loop during interpretation.
+// The function does not return an error.
+func (i *Interpreter) VisitContinueStmt() (any, error) {
+	return CONTINUE, nil
 }
 
 // VisitBinary evaluates a binary expression by visiting its left and right operands
@@ -265,6 +301,11 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 			if rightValue, ok := right.(string); ok {
 				return leftValue + rightValue, nil
 			}
+			err := checkIfNumber(right, expr.Operator)
+			if err != nil {
+				return nil, err
+			}
+			return leftValue + strconv.FormatFloat(right.(float64), 'g', -1, 64), nil
 		}
 		if rightValue, ok := right.(string); ok {
 			// We know that the right is a string, so we need to check if the left is a number
@@ -272,7 +313,7 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 			if err != nil {
 				return nil, err
 			}
-			return rightValue + fmt.Sprintf("%v", left.(float64)), nil
+			return rightValue + strconv.FormatFloat(left.(float64), 'g', -1, 64), nil
 		}
 		err := checkIfNumbers(left, right, expr.Operator)
 		if err != nil {
