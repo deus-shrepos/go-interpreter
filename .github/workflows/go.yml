@@ -1,0 +1,60 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      skiptests:
+        description: 'Skip the heavy test step'
+        required: false
+        default: 'false'
+        
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        go: ['stable', 'oldstable']
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go }}
+    - name: Go Format
+      run: gofmt -s -w . && git diff --exit-code
+    - name: Go Vet
+      run: go vet ./...
+    - name: Go Tidy
+      run: go mod tidy && git diff --exit-code
+    - name: Go Mod
+      run: go mod download
+    - name: Go Mod Verify
+      run: go mod verify
+    - name: Go linter
+      uses: Jerome1337/golint-action@v1.0.3
+      with:
+        golint-path: ./internal   
+    - name: Build
+      run: go build -v ./build
+    - name: Test
+      run: go test -v ./tests
+    - name: Go Generate
+      run: go generate ./... && git diff --exit-code
+    - name: Go Build
+      run: go build -o /dev/null ./...
+    - name: Go Test
+      if: ${{ !inputs.skipTests }}
+      run: go test -v -count=1 -race -shuffle=on -coverprofile=coverage.txt ./...
+    - name: Go Benchmark
+      run: go test -v -shuffle=on -run=- -bench=. -benchtime=1x ./...
+
