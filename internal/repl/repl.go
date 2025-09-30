@@ -3,9 +3,12 @@ package repl
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	// "github.com/go-interpreter/internal/interpreter"
-	"github.com/go-interpreter/internal/interpreter"
+	// "github.com/go-interpreter/internal/interpreter"
+	"github.com/chzyer/readline"
+	"github.com/go-interpreter/internal/printer"
 	"github.com/go-interpreter/internal/scanner"
 
 	parser "github.com/go-interpreter/internal/parser"
@@ -52,16 +55,56 @@ func (repl *Repl) loadProgram(path string) error {
 func (repl *Repl) run(tokenScanner *scanner.TokenScanner) {
 	_ = tokenScanner.ScanTokens()
 	p := parser.NewParser(tokenScanner.Tokens)
-	inter := interpreter.NewInterpreter()
 	parsedStatments := p.Parse()
-	err := inter.Interpret(parsedStatments)
-	if err != nil {
-		repl.HadError = true
-		fmt.Println(err)
-	}
-	if repl.HadError {
-		return
-	}
+	printer := printer.PrintAST{}
+	printer.PrintAll(parsedStatments)
+	// inter := interpreter.NewInterpreter()
+	//err := inter.Interpret(parsedStatments)
+	//if err != nil {
+	//	repl.HadError = true
+	//	fmt.Println(err)
+	//}
+	//if repl.HadError {
+	//	return
+	//}
 	// astPrinter := printer.PrintAST{}
 	// astPrinter.Print(expr)
+}
+
+func (repl *Repl) RunCli() {
+	rl, err := readline.NewEx(
+		&readline.Config{
+			Prompt:                 ">>> ",
+			HistoryFile:            "/tmp/readline-multiline",
+			DisableAutoSaveHistory: true,
+		})
+	if err != nil {
+		panic(err)
+	}
+
+	defer rl.Close()
+
+	var cmds []string
+	for {
+		line, err := rl.Readline()
+		if err != nil {
+			break
+		}
+
+		line = strings.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
+
+		cmds = append(cmds, line)
+		if !strings.HasSuffix(line, "{") {
+			rl.SetPrompt("... ")
+			continue
+		}
+		cmd := strings.Join(cmds, " ")
+		cmds = cmds[:0]
+		rl.SetPrompt("> ")
+		rl.SaveHistory(cmd)
+
+	}
 }
