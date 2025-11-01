@@ -20,4 +20,20 @@ Clone the repository and run the interpreter (this run the default file in the :
 ```bash
 git clone https://github.com/shahnawaz-lang/go-interpreter.git
 cd go-interpreter
-make run
+make install-program
+```
+
+Once you install the go interpreter :
+
+```bash
+gointer --string 'print "Hello world";"
+```
+
+```bash
+gointer --path 'yourpath/program.txt'
+```
+
+To print the AST nodes, just add `--ast` at the end
+```bash
+gointer --string "var x = 10; print x;" --ast
+```
