@@ -1,0 +1,57 @@
+
+Scope
+    a region where a name maps to a certain entity
+    multiple scopes enable the same name to refer to
+    different things in different contexts
+
+
+Lexical Scope (static scope)
+    the text of the program itself shows where
+    a scope begins and ends
+    Modern languages are lexically scoped
+    {
+        var a = "first";
+        print a;
+    }
+    {
+        var a = "second";
+        print a;
+    }
+
+dynamic scope
+    name refers to until we execute the code
+
+    class Saxophone{
+        play(){
+            print "Something"
+        }
+    }
+
+    class GolfClub {
+        play(){
+            print "Play it!"
+        }
+    }
+
+    fun playit(thing){
+        thing.play()
+    }
+
+
+scope and Environment are closely related. Scope is a theoretical concept, while Environment is the implementation of it.
+
+Nesting and shadowing
+    1. Visit each statement inside the block, track the variables inside of it
+    2. After the last statement is executed, tell the Environment to delete all of
+       those variables
+
+    local scope provides encapsulation - a block of code in one corner of the program
+    shouldn't interfere with some other block
+
+    var volume = 11;
+    volume = 0;
+    {
+        var volume = 3 * 4 * 5;
+        print volume;
+    }
+

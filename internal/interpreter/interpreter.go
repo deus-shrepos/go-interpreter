@@ -133,6 +133,23 @@ func (i *Interpreter) VisitBlockStmt(blockStmt ast.Block) (any, error) {
 	return nil, nil
 }
 
+func (i *Interpreter) VisitCall(callExpr ast.Call) (any, error) {
+	callee, err := i.eval(callExpr.Callee)
+	if err != nil {
+		return nil, err
+	}
+
+	var args []any
+	for _, arg := range callExpr.Args {
+		expr, err := i.eval(arg)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, expr)
+	}
+
+}
+
 // VisitLiteral evaluates a literal expression and returns its value.
 // It takes an ast.Literal as input and returns the value of the literal
 // along with any potential error. Literal expressions represent constant

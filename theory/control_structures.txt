@@ -1,0 +1,103 @@
+Control Flow
+    We need the interpreter to be Turing-complete
+    Background:
+        === Turning machines revisited ===
+        can all true statements be proven? (yes => actually no)
+        can we compute all functions that we can define? (yes => actually no)
+        [x]what do we mean when we claim a function is "computable"?
+            => what kind of functions are computable => computable functions => turing machine / lambda calculus
+
+           TM(C={fn1, ... fn2}) => L(C)
+            given cFn() => TM => simulator => any L that produces cFn_n() => Turing compelete
+             -> arithmetic
+             -> control flow (tape)
+             -> allocation (memory)
+
+
+
+    Conditional Execution
+
+    (1) conditional/branching control flow:
+        execute *not* some piece of code.
+        jumping ahead over a region of code
+
+        if-statements
+
+    (2) looping control flow
+        executing a chunk of code more than once
+        jumps back
+        no infinite loops => conditional logic
+
+        while-for-statements
+
+
+    statement -> exprStmt | ifStmt | printStmt | block;
+    ifStmt -> "if" "(" expression ")" statement ("else" statement )?;
+
+
+    dangling else problem
+     if (first)
+        if (second)
+                ----
+     else
+        -----
+
+     the else is bound to the nearest if that precedes it
+
+
+Logical operators:
+    implement short-circuit on the logical conditions that if left side operand is false(-y) and the right hand
+    side is skipped
+Loops:
+    for ->
+        "for" "(" (varDecl | exprStmt | ";")
+         expression? ";"
+         expression? ")" statement;
+
+
+         ->
+            1. for (var i = 0; i < 10; i++)
+            2. for (; i < 10; i++)
+            3. for (i = 0; ; i++)
+            4. for (i = 0; i < 10;)
+                ...
+            5. for (;;)
+            
+implementing "break" and "continue":
+         var i = 0;
+         while (i < 10){
+            if (i == 5){
+                break;
+            }
+            ....
+        }
+    while -> condition + body + break
+        body -> break/continue
+
+
+         while-statement]
+            -> statement
+            -> statement -> control statement
+                            -> body
+                                -> break; 
+        
+        LOOP:
+            for ___ {
+                
+            }
+
+
+     SYNTAX: 
+     statements -> whileStatement 
+                  | forStatememt
+                  | ifStatement
+                  | breakStatement
+                  | blockStatement
+     whileStatement -> condition | body
+     body -> statements
+     SEMANTICS:
+            LOOP(1) -> STATEMENTS
+            BREAK -> LOOP(1)
+
+
+

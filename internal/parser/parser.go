@@ -592,11 +592,66 @@ func (parser *Parser) unary() (ast.Expr, error) {
 		}
 		return ast.Unary{Operator: operator, Right: right}, nil
 	}
-	primary, err := parser.primary()
+
+	return parser.call()
+
+}
+
+func (parser *Parser) call() (ast.Expr, error) {
+	expr, err := parser.primary()
 	if err != nil {
 		return nil, err
 	}
-	return primary, nil
+
+	for {
+		if parser.match(token.LEFT_PAREN) {
+			expr, err = parser.finishCall(expr)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// if all the arguements are evaluated
+			// then we break
+			break
+		}
+	}
+	return expr, err
+}
+
+func (parser *Parser) finishCall(callee ast.Expr) (ast.Call, error) {
+	var args []ast.Expr
+	if !parser.check(token.RIGHT_PAREN) {
+		for {
+			if len(args) > 255 {
+
+				// We let the parser sync the state and move on
+				return ast.Call{}, errors.ExecutionError{
+					Type:    errors.PARSER_ERROR,
+					Line:    parser.peek().Line,
+					Where:   parser.peek().Char,
+					Message: "Only 254 arguments are allowed",
+				}
+			}
+			expr, err := parser.expression()
+			if err != nil {
+				return ast.Call{}, err
+			}
+			args = append(args, expr)
+			if !parser.match(token.COMMA) {
+				break
+			}
+		}
+	}
+
+	paren, err := parser.consume(token.RIGHT_PAREN, "Expect ')' after arguments.")
+	if err != nil {
+		return ast.Call{}, err
+	}
+	return ast.Call{
+		Callee: callee,
+		Paren:  paren, // good to check the boundary as it helps with diagnostics
+		Args:   args,
+	}, nil
 }
 
 // primary parses a primary expression in the source code and returns an

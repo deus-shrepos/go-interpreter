@@ -42,6 +42,10 @@ update-env:
 	echo "go interpreter has been added to your .rc file. Please restart your shell"
 
 install-program: install update-env
+build-gc:
+	mkdir -p bin
+	go build -gcflags -o bin/gointer $$((CMD))
+	
 
 test:
 	go test tests/

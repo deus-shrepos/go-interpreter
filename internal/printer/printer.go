@@ -49,6 +49,11 @@ func (printer *PrintAST) VisitLiteral(node ast.Literal) (interface{}, error) {
 	), nil
 }
 
+func (printer *PrintAST) VisitCall(node ast.Call) (interface{}, error) {
+	return fmt.Sprintf("%sCall(%v)",
+		strings.Repeat(" ", printer.indentation), node.Args), nil
+}
+
 // VisitUnary generates a string representation of a unary expression.
 func (printer *PrintAST) VisitUnary(node ast.Unary) (interface{}, error) {
 	printer.indentation++

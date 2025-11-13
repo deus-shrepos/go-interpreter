@@ -1,0 +1,31 @@
+What actually are functions?
+
+"Pure" functions vs procedures?
+
+
+Definitions:
+	unary -> ( "!" | "-") unary | call;
+	call -> primary ( "(" arguments ")")*;
+
+	precedence? one step above unary? but like why?
+
+	because => [a-thing-that-needs-to-be-called] () => equalivant => (!object)
+			=> expands => calle()()()()()()()()()* => infinite chain of callers
+
+	arguments => expression ("," expression)*; => currying is possible 
+
+	therefore we have currying
+	f[x][y][z][....]
+	optional arguments
+
+	Call => Expe calle, Token paren, list<Expr> arguments;
+	
+
+
+	example:
+
+	fun foobar(){
+		...
+	}
+
+	foobar() => eval[foobar] -> func 0bject

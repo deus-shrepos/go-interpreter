@@ -1,0 +1,59 @@
+
+
+   P::[Global Scope::[bindings: {
+                       "x": [1, 2, 3],
+                       "y": 10
+                  }]]
+
+   Good case:
+   Interpreter(Find("x")) => Global_Scope.bindings("x") => [1, 2, 3]
+   Bad case:
+   Interpreter(Find("z")) => Global_Scope.bindings("z") => ??? doesn't exist ???
+            => what is the approach here?
+               1) syntax error
+               2) runtime error
+               3) return nil if not found
+
+   3) too permissive, so lets not go with it
+   1) it seems like good option
+       why? the sooner we find the bug, the better?
+       but, when we use a variable, we are not just referring to it
+       when a variable is defined, it could be the case (and it is the case) that
+       we do not immediately want to evaluate it
+       this is bad in the case of recursion
+
+       Interpreter =>
+           fun factorial(n) {
+              if (n == 0) return 1;
+              return n * factorial(n-1);
+           }
+
+       Interpreter =>
+            fun isOdd(n) {
+                if (n == 0) return false;
+                return isEven(n - 1);
+            }
+
+            fun isEven(n){
+                if (n == 0) return true;
+                return isOdd(n - 1);
+            }
+       2) works because references do not need to be evaluated immediately
+
+       if the object's value is not none
+            then its like "var x = (expression))"
+             evalute the expression and get its value
+
+             now that the value is there, store it in the envirnoment
+             var's lexeme and the value
+             or if we do have the "var x = expression" or just "var x;"
+             x = nil or None and we store it in the env
+
+Assignments can be expressions (atleast in C)
+    expr -> assignment;
+    assignment -> IDENTIFIER "=" assignment | equality;
+    we need to first check for the equality() and it should return a variable on the left-side (the l-value)
+    and then parse the "=" after and return the result of the expression as r-value
+    (l-value) = (r-value)
+
+
