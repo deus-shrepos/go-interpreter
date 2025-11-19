@@ -12,10 +12,21 @@ type ExprVisitor interface {
 	VisitVariable(node Variable) (any, error)
 	VisitAssign(node Assign) (any, error)
 	VisitLogical(node Logical) (any, error)
+	VisitFuncCall(node Call) (any, error)
 }
 
 type Expr interface {
 	Accept(visitor ExprVisitor) (any, error)
+}
+
+type Call struct {
+	Callee Expr
+	Paran  token.Token
+	Args   []Expr
+}
+
+func (node Call) Accept(visitor ExprVisitor) (any, error) {
+	return visitor.VisitFuncCall(node)
 }
 
 type Logical struct {
