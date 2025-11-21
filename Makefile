@@ -29,19 +29,17 @@ install:
 	@echo "Install Done!"
 
 update-env:
-	@echo "Sourcing the program..."
-	@if echo "$$SHELL" | grep -q "zsh"; then \
+		@if echo "$$SHELL" | grep -q "zsh"; then \
 		echo "Deteched ZSH"; \
 		echo 'export PATH=$$HOME/bin:$$PATH' >> $$HOME/.zshrc; \
 		zsh -ic "source $$HOME/.zshrc"; \
 	elif echo "$$SHELL" | grep -q "bash"; then \
 		echo "Deteched Bash";\
-		echo 'export PATH=$$HOME/bin:$$PATH' >> $$HOME/.bashrc; \
-		. "$$HOME/.bashrc"; \
+		echo 'export PATH=$$HOME/bin:$$PATH' >> ~/.bashrc; \
 	fi; \
-	echo "go interpreter has been added to your .rc file. Please restart your shell"
+	echo "go interpreter has been added to your .rc file. Please source your .bashrc"
 
-install-program: install update-env
+install-interpreter: install update-env
 
 test:
 	go test tests/
