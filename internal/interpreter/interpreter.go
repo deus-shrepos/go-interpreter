@@ -1,7 +1,6 @@
 package interpreter
 
 import (
-	_ "errors"
 	"fmt"
 	"strconv"
 
@@ -14,12 +13,16 @@ import (
 // It is responsible for executing and evaluating code based on the
 // implemented logic and rules of the interpreter.
 type Interpreter struct {
+	Global      *Environment // global scope for native functions, etc
 	environment *Environment
 }
 
 func NewInterpreter() Interpreter {
+	globalScope := NewEnvironment(nil)
+	globalScope.Define("Clock", ClockFunction{}) // Native Function
 	return Interpreter{
-		environment: NewEnvironment(nil),
+		Global:      globalScope,
+		environment: globalScope, // global scope is the top most scope to start with
 	}
 }
 
@@ -115,6 +118,58 @@ func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
 		return nil, err
 	}
 	return value, err
+}
+
+// VisitFunctionStmt processes a function statement by creating a new function object
+// and defining it in the current interpreter's environment. It takes a function statement
+// as input and returns nil and an error if any occurs during the process.
+func (i *Interpreter) VisitFunctionStmt(functionStmt ast.Function) (any, error) {
+	funcObject := NewFunction(functionStmt)
+	i.environment.Define(functionStmt.Name.Lexeme, funcObject)
+	return nil, nil
+}
+
+// VisitFunctionCall evaluates an ast.Call node: it evaluates the callee and each argument,
+// verifies the callee implements Callable, checks the argument count matches the callable's
+// arity, and invokes the callable with the evaluated arguments. It returns the callable's
+// result or an ExecutionError when the callee is not callable or the arity is incorrect.
+func (i *Interpreter) VisitFunctionCall(functionCall ast.Call) (any, error) {
+	callee, err := i.eval(functionCall.Callee)
+	if err != nil {
+		return nil, err
+	}
+
+	var funcArgs []any
+	for _, arg := range functionCall.Args {
+		evalArg, err := i.eval(arg)
+		if err != nil {
+			return nil, err
+		}
+		funcArgs = append(funcArgs, evalArg)
+	}
+
+	function, isCallable := callee.(Callable)
+	if !isCallable {
+
+		return nil, errors.ExecutionError{
+			Type:    errors.RUNTIME_ERROR,
+			Line:    functionCall.Paren.Line,
+			Where:   functionCall.Paren.Char,
+			Message: "function callee is not a valid identifier",
+		}
+	}
+
+	if function.arity() != len(functionCall.Args) {
+
+		return nil, errors.ExecutionError{
+			Type:    errors.RUNTIME_ERROR,
+			Line:    functionCall.Paren.Line,
+			Where:   functionCall.Paren.Char,
+			Message: fmt.Sprintf("Expected %d arguments but got %d", function.arity(), len(functionCall.Args)),
+		}
+
+	}
+	return function.call(i, funcArgs)
 }
 
 // VisitBlockStmt VisitBlock executes a block statement by creating a new environment scope.
