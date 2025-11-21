@@ -33,13 +33,15 @@ func (f function) call(i *Interpreter, args []any) (any, error) {
 		functionEnvirnoment.Define(f.Declarations.Parameters[idx].Lexeme, arg)
 	}
 
-	_, err := i.execBlock(f.Declarations.Body, functionEnvirnoment)
+	value, err := i.execBlock(f.Declarations.Body, functionEnvirnoment)
 	if err != nil {
 		return nil, err
 	}
 
+	if control, isReturn := value.(ControlSignal); isReturn {
+		return control.Value, nil
+	}
 	return nil, nil
-
 }
 
 // arity returns the number of parameters the function expects.
