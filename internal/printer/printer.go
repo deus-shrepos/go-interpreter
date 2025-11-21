@@ -159,6 +159,20 @@ func (printer *PrintAST) VisitBlockStmt(node ast.Block) (interface{}, error) {
 	), nil
 }
 
+// VisitReturnStmt prints a return statement.
+func (printer *PrintAST) VisitReturnStmt(node ast.ReturnStmt) (interface{}, error) {
+	printer.indentation++
+	returnExpr, _ := node.Value.Accept(printer)
+	return fmt.Sprintf("%sReturnStmt(\n%s%s\n%s%s",
+		strings.Repeat(" ", printer.indentation),
+		node.Keyword,
+		strings.Repeat(" ", printer.indentation),
+		returnExpr,
+		strings.Repeat(" ", printer.indentation),
+	), nil
+
+}
+
 // VisitIfStmt prints an if statement.
 func (printer *PrintAST) VisitIfStmt(node ast.IfStmt) (interface{}, error) {
 	printer.indentation++
