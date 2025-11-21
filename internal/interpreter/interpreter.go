@@ -67,6 +67,22 @@ func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) (any, error) {
 	return nil, nil
 }
 
+// VisitReturnStmt evaluates the optional return expression and produces a ControlSignal
+// of type RETURN containing the evaluated value (nil if no expression). Any evaluation
+// error is propagated.
+func (i *Interpreter) VisitReturnStmt(stmt ast.ReturnStmt) (any, error) {
+	var returnValue any
+	if stmt.Value != nil {
+		value, err := i.eval(stmt.Value)
+		if err != nil {
+			return nil, err
+		}
+		returnValue = value
+	}
+	control := ControlSignal{Type: RETURN, Value: returnValue}
+	return control, nil
+}
+
 // VisitVariable VisitVarExpr evaluates a variable expression by retrieving its value from the current Environment.
 // It takes an ast.Variable as input, attempts to get the value associated with the variable's name,
 // and returns the value along with any error encountered during the lookup.
@@ -97,7 +113,7 @@ func (i *Interpreter) VisitIfStmt(stmt ast.IfStmt) (any, error) {
 		return nil, err
 	}
 
-	if control, ok := signal.(ControlSig); ok {
+	if control, ok := signal.(ControlSignal); ok {
 		return control, nil
 	}
 
@@ -182,7 +198,7 @@ func (i *Interpreter) VisitBlockStmt(blockStmt ast.Block) (any, error) {
 		return nil, err
 	}
 
-	if control, ok := s.(ControlSig); ok {
+	if control, ok := s.(ControlSignal); ok {
 		return control, nil
 	}
 	return nil, nil
@@ -268,10 +284,10 @@ func (i *Interpreter) execBlock(stmts []ast.Stmt, environment *Environment) (any
 		if err != nil {
 			return nil, err
 		}
-		if control, ok := s.(ControlSig); ok {
+		if control, ok := s.(ControlSignal); ok {
 			sig = control
 			// We do not run the rest of the statements
-			if control == CONTINUE || control == BREAK {
+			if control.Type == CONTINUE || control.Type == BREAK || control.Type == RETURN {
 				break
 			}
 		}
@@ -316,8 +332,8 @@ func (i *Interpreter) VisitWhileStmt(expr ast.WhileStmt) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if control, ok := s.(ControlSig); ok {
-			if control == BREAK {
+		if control, ok := s.(ControlSignal); ok {
+			if control.Type == BREAK {
 				break
 			}
 		}
@@ -330,7 +346,7 @@ func (i *Interpreter) VisitWhileStmt(expr ast.WhileStmt) (any, error) {
 // It returns the BREAK control signal, which is used to exit loops during interpretation.
 // The function does not return an error.
 func (i *Interpreter) VisitBreakStmt() (any, error) {
-	return BREAK, nil
+	return ControlSignal{}, nil
 }
 
 // VisitContinueStmt handles the execution of a continue statement in the AST.

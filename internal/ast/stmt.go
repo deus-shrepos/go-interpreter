@@ -14,10 +14,20 @@ type StmtVisitor interface {
 	VisitBreakStmt() (any, error)
 	VisitContinueStmt() (any, error)
 	VisitFunctionStmt(node Function) (any, error)
+	VisitReturnStmt(node ReturnStmt) (any, error)
 }
 
 type Stmt interface {
 	Accept(visitor StmtVisitor) (any, error)
+}
+
+type ReturnStmt struct {
+	Keyword token.Token
+	Value   Expr
+}
+
+func (node ReturnStmt) Accept(visitor StmtVisitor) (any, error) {
+	return visitor.VisitReturnStmt(node)
 }
 
 type Function struct {
