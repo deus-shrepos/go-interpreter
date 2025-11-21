@@ -1,8 +1,14 @@
 package interpreter
 
-type ControlSig int
+type ControlSignalType int
 
 const (
-	BREAK ControlSig = iota
+	BREAK ControlSignalType = iota
 	CONTINUE
+	RETURN
 )
+
+type ControlSignal struct {
+	Type  ControlSignalType
+	Value any
+}
