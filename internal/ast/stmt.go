@@ -1,6 +1,8 @@
 package ast
 
-import "github.com/go-interpreter/internal/token"
+import (
+	"github.com/go-interpreter/internal/token"
+)
 
 type StmtVisitor interface {
 	VisitExpressionStmt(node ExpressionStmt) (any, error)
@@ -11,11 +13,23 @@ type StmtVisitor interface {
 	VisitWhileStmt(node WhileStmt) (any, error)
 	VisitBreakStmt() (any, error)
 	VisitContinueStmt() (any, error)
+	VisitFunctionStmt(node Function) (any, error)
 }
 
 type Stmt interface {
 	Accept(visitor StmtVisitor) (any, error)
 }
+
+type Function struct {
+	Name       token.Token
+	Parameters []token.Token
+	Body       []Stmt
+}
+
+func (node Function) Accept(visitor StmtVisitor) (any, error) {
+	return visitor.VisitFunctionStmt(node)
+}
+
 type WhileStmt struct {
 	Condition Expr
 	Body      Stmt
