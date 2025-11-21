@@ -106,7 +106,7 @@ func (parser *Parser) functionDeclaration(functionType string) (ast.Stmt, error)
 		return nil, err
 	}
 
-	_, err = parser.consume(token.RIGHT_BRACE, functionType+"should start with '{' after ')'")
+	_, err = parser.consume(token.LEFT_BRACE, functionType+"should start with '{' after ')'")
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +164,13 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 			return nil, err
 		}
 		return printStatement, nil
+	}
+	if parser.match(token.RETURN) {
+		returnStatement, err := parser.returnStatement()
+		if err != nil {
+			return nil, err
+		}
+		return returnStatement, nil
 	}
 
 	if parser.match(token.WHILE) {
@@ -225,6 +232,27 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 		return nil, err
 	}
 	return ast.ExpressionStmt{Expression: expressionStmt}, nil
+}
+
+func (parser *Parser) returnStatement() (ast.Stmt, error) {
+	keyword := parser.previous() // for error tracking
+	var returnValue ast.Expr     // default return
+	if !parser.check(token.SEMICOLON) {
+		returnExprValue, err := parser.expression()
+		if err != nil {
+			return nil, err
+		}
+		returnValue = returnExprValue
+	}
+	_, err := parser.consume(token.SEMICOLON, "Expect ';' after return value.")
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.ReturnStmt{
+		Keyword: keyword,
+		Value:   returnValue,
+	}, nil
 }
 
 // breakStatement parses a 'break' statement in the source code.
@@ -658,6 +686,10 @@ func (parser *Parser) unary() (ast.Expr, error) {
 	return funcCall, nil
 }
 
+// functionCall parses a primary expression and, if a left parenthesis is found,
+// repeatedly parses call-argument lists to build call expressions (supporting
+// chained/nested calls). It returns the resulting ast.Expr or an error if
+// argument parsing fails.
 func (parser *Parser) functionCall() (ast.Expr, error) {
 	expr, err := parser.primary()
 	if err != nil {
@@ -678,10 +710,24 @@ func (parser *Parser) functionCall() (ast.Expr, error) {
 	return expr, nil
 }
 
+// parseCallArguments parses the argument list of a call expression for the
+// provided callee expression. It reads zero or more comma-separated expressions
+// (enforcing the parser's argument limit), consumes the closing ')', and
+// returns an ast.Call containing the callee, the closing parenthesis token, and
+// the collected argument expressions. Returns an error on syntax or arity
+// violations.
 func (parser *Parser) parseCallArguments(expr ast.Expr) (ast.Call, error) {
 	var funcArgs []ast.Expr
 	if !parser.check(token.RIGHT_PAREN) {
 		for {
+			if len(funcArgs) >= 255 {
+				return ast.Call{}, errors.ExecutionError{
+					Type:    errors.PARSER_ERROR,
+					Line:    parser.peek().Line,
+					Where:   parser.peek().Char,
+					Message: "Only 254 arguments are allowed.",
+				}
+			}
 			argExpr, err := parser.expression()
 			if err != nil {
 				return ast.Call{}, nil
