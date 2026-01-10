@@ -7,6 +7,8 @@ import (
 	"github.com/go-interpreter/internal/ast"
 	"github.com/go-interpreter/internal/errors"
 	"github.com/go-interpreter/internal/token"
+	"github.com/go-interpreter/internal/utils"
+	_ "github.com/go-interpreter/internal/utils"
 )
 
 // Interpreter represents the core structure for the interpreter.
@@ -15,15 +17,19 @@ import (
 type Interpreter struct {
 	Global      *Environment // global scope for native functions, etc
 	environment *Environment
+	output      utils.OutputStream
+	hasError    bool
 }
 
-func NewInterpreter() Interpreter {
+func NewInterpreter(stream utils.OutputStream) Interpreter {
 	globalScope := NewEnvironment(nil)
 	globalScope.Define("Clock", ClockFunction{}) // Native Function
-	return Interpreter{
+	interpreter := Interpreter{
 		Global:      globalScope,
 		environment: globalScope, // global scope is the top most scope to start with
+		output:      stream,
 	}
+	return interpreter
 }
 
 // Interpret executes a series of statements provided as input.
@@ -38,14 +44,15 @@ func (i *Interpreter) Interpret(stmts []ast.Stmt) error {
 		// If we execute a NIL that will make the whole goroutine panic.
 		// This would essentially make sure we have an early exit.
 		if statement == nil {
-			return fmt.Errorf("error: Interpreter panic. Exiting program")
+			i.output.Print("error: Interpreter panic. Exiting program")
 		}
 		_, err := i.exec(statement) // WE DO NOT EVAL STATEMENTS, WE EXECUTE THEM
 		if err != nil {
-			return fmt.Errorf("error: %v", err)
+			i.output.Error(err)
+			return err
 		}
 	}
-	fmt.Println("") // To get rid of that annoying "%" in the terminal
+	i.output.Print("\n") // To get rid of that annoying "%" in the terminal
 	return nil
 }
 
@@ -140,7 +147,7 @@ func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
 // and defining it in the current interpreter's environment. It takes a function statement
 // as input and returns nil and an error if any occurs during the process.
 func (i *Interpreter) VisitFunctionStmt(functionStmt ast.Function) (any, error) {
-	funcObject := NewFunction(functionStmt)
+	funcObject := NewFunction(functionStmt, i.environment)
 	i.environment.Define(functionStmt.Name.Lexeme, funcObject)
 	return nil, nil
 }
@@ -244,7 +251,7 @@ func (i *Interpreter) VisitExpressionStmt(stmt ast.ExpressionStmt) (any, error) 
 // used for side effects (printing).
 func (i *Interpreter) VisitPrintStmt(stmt ast.PrintStmt) (any, error) {
 	value, _ := i.eval(stmt.Expression)
-	fmt.Print(stringify(value))
+	i.output.Print(stringify(value))
 	return nil, nil
 }
 
@@ -365,7 +372,7 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 	right, _ := i.eval(expr.Right)
 	switch expr.Operator.Type {
 	case token.MINUS:
-		return right.(float64) - left.(float64), nil
+		return left.(float64) - right.(float64), nil
 	case token.PLUS:
 		// Check if the operands are strings
 		if leftValue, ok := left.(string); ok {

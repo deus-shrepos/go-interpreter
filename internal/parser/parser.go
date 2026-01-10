@@ -76,13 +76,17 @@ func (parser *Parser) Declarations() (ast.Stmt, error) {
 // functionDeclaration parses a function declaration of the given functionType (used in error messages).
 // It consumes the function name, parameter list and body, and returns an ast.Function node or an error
 // if any expected token (identifier, parentheses, parameters, or body) is missing or malformed.
-func (parser *Parser) functionDeclaration(functionType string) (ast.Stmt, error) {
-	name, err := parser.consume(token.IDENTIFIER, functionType+" name should be a valid identifier.")
-	if err != nil {
-		return nil, err
+func (parser *Parser) functionDeclaration(functionType string, isAnnoynmous bool) (ast.Stmt, error) {
+	var functionName token.Token
+	if !isAnnoynmous {
+		name, err := parser.consume(token.IDENTIFIER, functionType+" name should be a valid identifier.")
+		if err != nil {
+			return nil, err
+		}
+		functionName = name
 	}
 
-	_, err = parser.consume(token.LEFT_PAREN, "Expect '(' after "+functionType+" indentifier")
+	_, err := parser.consume(token.LEFT_PAREN, "Expect '(' after "+functionType+" indentifier")
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +121,7 @@ func (parser *Parser) functionDeclaration(functionType string) (ast.Stmt, error)
 	}
 
 	return ast.Function{
-		Name:       name,
+		Name:       functionName,
 		Parameters: functionParameters,
 		Body:       body,
 	}, nil
@@ -484,7 +488,11 @@ func (parser *Parser) expression() (ast.Expr, error) {
 // Otherwise, it returns a parser error indicating an invalid assignment target.
 // Returns the constructed assignment expression or an error if parsing fails.
 func (parser *Parser) assignment() (ast.Expr, error) {
-	expr, err := parser.or()
+	expr, err := parser.functionExpression()
+	if err != nil {
+		return nil, err
+	}
+	expr, err = parser.or()
 	if err != nil {
 		return nil, err
 	}

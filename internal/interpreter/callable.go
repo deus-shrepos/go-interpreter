@@ -12,14 +12,16 @@ type Callable interface {
 
 type function struct {
 	Declarations ast.Function
+	Closure      *Environment
 }
 
 // NewFunction creates a new Function instance from the given function declaration.
-// It initializes the Function with its declarations.
-// This allows the interpreter to manage function calls and their associated metadata.
-func NewFunction(funcDeclaration ast.Function) function {
+// It initializes the Function with its declarations and the closed envirnoment.
+// This allows the interpreter to manage function calls and their associated data.
+func NewFunction(funcDeclaration ast.Function, closure *Environment) function {
 	return function{
 		Declarations: funcDeclaration,
+		Closure:      closure,
 	}
 }
 
@@ -28,7 +30,7 @@ func NewFunction(funcDeclaration ast.Function) function {
 // defines the function's parameters. After executing the function's body,
 // it returns the result or an error if one occurs.
 func (f function) call(i *Interpreter, args []any) (any, error) {
-	functionEnvirnoment := NewEnvironment(i.Global) // a function should have access to the global scope
+	functionEnvirnoment := NewEnvironment(f.Closure) // lexcial scope surronding the function
 	for idx, arg := range args {
 		functionEnvirnoment.Define(f.Declarations.Parameters[idx].Lexeme, arg)
 	}
