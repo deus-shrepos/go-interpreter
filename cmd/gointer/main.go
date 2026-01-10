@@ -38,5 +38,7 @@ func main() {
 			fmt.Println("Invalid Flags")
 			cliHelp()
 		}
+	} else {
+		cliHelp()
 	}
 }
