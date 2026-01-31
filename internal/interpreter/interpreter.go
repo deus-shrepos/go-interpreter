@@ -183,16 +183,26 @@ func (i *Interpreter) VisitFunctionCall(functionCall ast.Call) (any, error) {
 	}
 
 	if function.arity() != len(functionCall.Args) {
-
 		return nil, errors.ExecutionError{
 			Type:    errors.RUNTIME_ERROR,
 			Line:    functionCall.Paren.Line,
 			Where:   functionCall.Paren.Char,
 			Message: fmt.Sprintf("Expected %d arguments but got %d", function.arity(), len(functionCall.Args)),
 		}
-
 	}
 	return function.call(i, funcArgs)
+}
+
+// VisitFunctionExpression Visit functions that are expressions
+func (i *Interpreter) VisitFunctionExpression(functionExpr ast.FunctionExpr) (any, error) {
+	functionObject := Function{
+		Declarations: ast.Function{
+			Body:       functionExpr.Body,
+			Parameters: functionExpr.Parameters,
+		},
+		Closure: i.environment,
+	}
+	return functionObject, nil
 }
 
 // VisitBlockStmt VisitBlock executes a block statement by creating a new environment scope.

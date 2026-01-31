@@ -10,7 +10,7 @@ type Callable interface {
 	arity() int
 }
 
-type function struct {
+type Function struct {
 	Declarations ast.Function
 	Closure      *Environment
 }
@@ -18,8 +18,8 @@ type function struct {
 // NewFunction creates a new Function instance from the given function declaration.
 // It initializes the Function with its declarations and the closed envirnoment.
 // This allows the interpreter to manage function calls and their associated data.
-func NewFunction(funcDeclaration ast.Function, closure *Environment) function {
-	return function{
+func NewFunction(funcDeclaration ast.Function, closure *Environment) Function {
+	return Function{
 		Declarations: funcDeclaration,
 		Closure:      closure,
 	}
@@ -29,7 +29,7 @@ func NewFunction(funcDeclaration ast.Function, closure *Environment) function {
 // It sets up the function's environment with access to the global scope and
 // defines the function's parameters. After executing the function's body,
 // it returns the result or an error if one occurs.
-func (f function) call(i *Interpreter, args []any) (any, error) {
+func (f Function) call(i *Interpreter, args []any) (any, error) {
 	functionEnvirnoment := NewEnvironment(f.Closure) // lexcial scope surronding the function
 	for idx, arg := range args {
 		functionEnvirnoment.Define(f.Declarations.Parameters[idx].Lexeme, arg)
@@ -47,6 +47,6 @@ func (f function) call(i *Interpreter, args []any) (any, error) {
 }
 
 // arity returns the number of parameters the function expects.
-func (f function) arity() int {
+func (f Function) arity() int {
 	return len(f.Declarations.Parameters)
 }

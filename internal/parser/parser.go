@@ -51,7 +51,7 @@ func (parser *Parser) Parse() []ast.Stmt {
 // Returns the parsed statement node, or nil if parsing fails.
 func (parser *Parser) Declarations() (ast.Stmt, error) {
 	if parser.match(token.FUN) {
-		funcDec, err := parser.functionDeclaration("function") // function vs method
+		funcDec, err := parser.functionDeclaration("function", false) // function vs method
 		if err != nil {
 			return nil, err
 		}
@@ -78,7 +78,9 @@ func (parser *Parser) Declarations() (ast.Stmt, error) {
 // if any expected token (identifier, parentheses, parameters, or body) is missing or malformed.
 func (parser *Parser) functionDeclaration(functionType string, isAnnoynmous bool) (ast.Stmt, error) {
 	var functionName token.Token
+	// Check if the function is annoymous
 	if !isAnnoynmous {
+		fmt.Println("I have reached here!!!!")
 		name, err := parser.consume(token.IDENTIFIER, functionType+" name should be a valid identifier.")
 		if err != nil {
 			return nil, err
@@ -488,11 +490,7 @@ func (parser *Parser) expression() (ast.Expr, error) {
 // Otherwise, it returns a parser error indicating an invalid assignment target.
 // Returns the constructed assignment expression or an error if parsing fails.
 func (parser *Parser) assignment() (ast.Expr, error) {
-	expr, err := parser.functionExpression()
-	if err != nil {
-		return nil, err
-	}
-	expr, err = parser.or()
+	expr, err := parser.or()
 	if err != nil {
 		return nil, err
 	}
@@ -549,6 +547,22 @@ func (parser *Parser) assignment() (ast.Expr, error) {
 		}
 	}
 	return expr, nil
+}
+
+func (parser *Parser) functionExpression() (ast.Expr, error) {
+	functionDec, err := parser.functionDeclaration("Annoynmous", true)
+	if err != nil {
+		return nil, err
+	}
+	_, err = parser.consume(token.RIGHT_BRACE, "Expect '}' after the block.")
+	if err != nil {
+		return nil, err
+	}
+	functionStmt, _ := functionDec.(ast.Function)
+	return ast.FunctionExpr{
+		Parameters: functionStmt.Parameters,
+		Body:       functionStmt.Body,
+	}, nil
 }
 
 func (parser *Parser) or() (ast.Expr, error) {
@@ -736,11 +750,21 @@ func (parser *Parser) parseCallArguments(expr ast.Expr) (ast.Call, error) {
 					Message: "Only 254 arguments are allowed.",
 				}
 			}
-			argExpr, err := parser.expression()
-			if err != nil {
-				return ast.Call{}, nil
+			var expr ast.Expr
+			if parser.check(token.FUN) {
+				funcExpr, err := parser.functionExpression()
+				if err != nil {
+					return ast.Call{}, nil
+				}
+				expr = funcExpr
+			} else {
+				argExpr, err := parser.expression()
+				if err != nil {
+					return ast.Call{}, nil
+				}
+				expr = argExpr
 			}
-			funcArgs = append(funcArgs, argExpr)
+			funcArgs = append(funcArgs, expr)
 			if !parser.match(token.COMMA) {
 				break
 			}

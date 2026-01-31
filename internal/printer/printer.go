@@ -234,6 +234,11 @@ func (printer *PrintAST) VisitFunctionCall(node ast.Call) (interface{}, error) {
 	), nil
 }
 
+// TODO: FIX IT
+func (printer *PrintAST) VisitFunctionExpression(node ast.FunctionExpr) (interface{}, error) {
+	return nil, nil
+}
+
 // VisitWhileStmt prints a while statement.
 func (printer *PrintAST) VisitWhileStmt(node ast.WhileStmt) (interface{}, error) {
 	printer.indentation++
