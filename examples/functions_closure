@@ -1,0 +1,15 @@
+
+print "Running closure example \n";
+fun makeCounter(){
+	var i = 0;
+	fun count(){
+		i++;
+		print i;
+		print "\n";
+	}
+	return count;
+}
+
+var counter = makeCounter();
+print counter();
+print counter();

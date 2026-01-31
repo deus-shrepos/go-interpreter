@@ -1,0 +1,10 @@
+
+fun thrice(fn){
+    var i = 0; 
+    while (i < 10){
+        fn(i)
+    }
+}
+
+thrice(fun (i) {print i;})
+
