@@ -4,10 +4,7 @@ GREEN := \033[32m
 RED := \033[31m
 RESET := \033[0m
 ORANGE := \033[33m
-
 SHELL := /bin/sh
-
-
 BINARY := gointer
 CMD := ./cmd/gointer
 INTER := ./cmd/gointer
@@ -27,6 +24,11 @@ install:
 	export GOBIN=$HOME/bin
 	go install $(INTER)
 	@echo "Install Done!"
+
+install-windows:
+	@echo "Building & Install the binary for Windows..."
+	@set "GOBIN=%USERPROFILE%\\go\\bin" && go install $(INTER)
+	@echo "Install Done for Windows!"
 
 update-env:
 		@if echo "$$SHELL" | grep -q "zsh"; then \
