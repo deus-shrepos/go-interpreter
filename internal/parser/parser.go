@@ -80,7 +80,6 @@ func (parser *Parser) functionDeclaration(functionType string, isAnnoynmous bool
 	var functionName token.Token
 	// Check if the function is annoymous
 	if !isAnnoynmous {
-		fmt.Println("I have reached here!!!!")
 		name, err := parser.consume(token.IDENTIFIER, functionType+" name should be a valid identifier.")
 		if err != nil {
 			return nil, err
