@@ -50,6 +50,14 @@ func (parser *Parser) Parse() []ast.Stmt {
 // the parser attempts to recover by synchronizing to the next valid statement boundary.
 // Returns the parsed statement node, or nil if parsing fails.
 func (parser *Parser) Declarations() (ast.Stmt, error) {
+	if parser.match(token.FUN) {
+		funcDec, err := parser.functionDeclaration("function", false) // function vs method
+		if err != nil {
+			return nil, err
+		}
+
+		return funcDec, nil
+	}
 	if parser.match(token.VAR) {
 		stmt, err := parser.varDeclaration()
 		if err != nil {
@@ -62,6 +70,63 @@ func (parser *Parser) Declarations() (ast.Stmt, error) {
 		parser.synchronize()
 	}
 	return stmt, err
+
+}
+
+// functionDeclaration parses a function declaration of the given functionType (used in error messages).
+// It consumes the function name, parameter list and body, and returns an ast.Function node or an error
+// if any expected token (identifier, parentheses, parameters, or body) is missing or malformed.
+func (parser *Parser) functionDeclaration(functionType string, isAnnoynmous bool) (ast.Stmt, error) {
+	var functionName token.Token
+	// Check if the function is annoymous
+	if !isAnnoynmous {
+		fmt.Println("I have reached here!!!!")
+		name, err := parser.consume(token.IDENTIFIER, functionType+" name should be a valid identifier.")
+		if err != nil {
+			return nil, err
+		}
+		functionName = name
+	}
+
+	_, err := parser.consume(token.LEFT_PAREN, "Expect '(' after "+functionType+" indentifier")
+	if err != nil {
+		return nil, err
+	}
+
+	var functionParameters []token.Token
+	if !parser.check(token.RIGHT_PAREN) {
+		for {
+			paramName, err := parser.consume(token.IDENTIFIER, "Not a valid parameter.")
+			if err != nil {
+				return nil, err
+			}
+			functionParameters = append(functionParameters, paramName)
+			if !parser.match(token.COMMA) {
+				break
+			}
+		}
+	}
+
+	_, err = parser.consume(token.RIGHT_PAREN, "Expect ')' after at the end.")
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = parser.consume(token.LEFT_BRACE, functionType+"should start with '{' after ')'")
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := parser.block()
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.Function{
+		Name:       functionName,
+		Parameters: functionParameters,
+		Body:       body,
+	}, nil
 
 }
 
@@ -105,6 +170,13 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 			return nil, err
 		}
 		return printStatement, nil
+	}
+	if parser.match(token.RETURN) {
+		returnStatement, err := parser.returnStatement()
+		if err != nil {
+			return nil, err
+		}
+		return returnStatement, nil
 	}
 
 	if parser.match(token.WHILE) {
@@ -166,6 +238,27 @@ func (parser *Parser) statement() (ast.Stmt, error) {
 		return nil, err
 	}
 	return ast.ExpressionStmt{Expression: expressionStmt}, nil
+}
+
+func (parser *Parser) returnStatement() (ast.Stmt, error) {
+	keyword := parser.previous() // for error tracking
+	var returnValue ast.Expr     // default return
+	if !parser.check(token.SEMICOLON) {
+		returnExprValue, err := parser.expression()
+		if err != nil {
+			return nil, err
+		}
+		returnValue = returnExprValue
+	}
+	_, err := parser.consume(token.SEMICOLON, "Expect ';' after return value.")
+	if err != nil {
+		return nil, err
+	}
+
+	return ast.ReturnStmt{
+		Keyword: keyword,
+		Value:   returnValue,
+	}, nil
 }
 
 // breakStatement parses a 'break' statement in the source code.
@@ -456,6 +549,22 @@ func (parser *Parser) assignment() (ast.Expr, error) {
 	return expr, nil
 }
 
+func (parser *Parser) functionExpression() (ast.Expr, error) {
+	functionDec, err := parser.functionDeclaration("Annoynmous", true)
+	if err != nil {
+		return nil, err
+	}
+	_, err = parser.consume(token.RIGHT_BRACE, "Expect '}' after the block.")
+	if err != nil {
+		return nil, err
+	}
+	functionStmt, _ := functionDec.(ast.Function)
+	return ast.FunctionExpr{
+		Parameters: functionStmt.Parameters,
+		Body:       functionStmt.Body,
+	}, nil
+}
+
 func (parser *Parser) or() (ast.Expr, error) {
 	expr, err := parser.and()
 	if err != nil {
@@ -592,11 +701,86 @@ func (parser *Parser) unary() (ast.Expr, error) {
 		}
 		return ast.Unary{Operator: operator, Right: right}, nil
 	}
-	primary, err := parser.primary()
+	funcCall, err := parser.functionCall()
 	if err != nil {
 		return nil, err
 	}
-	return primary, nil
+	return funcCall, nil
+}
+
+// functionCall parses a primary expression and, if a left parenthesis is found,
+// repeatedly parses call-argument lists to build call expressions (supporting
+// chained/nested calls). It returns the resulting ast.Expr or an error if
+// argument parsing fails.
+func (parser *Parser) functionCall() (ast.Expr, error) {
+	expr, err := parser.primary()
+	if err != nil {
+		return nil, err
+	}
+
+	for {
+		if parser.match(token.LEFT_PAREN) {
+			expr, err = parser.parseCallArguments(expr)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			break
+		}
+	}
+
+	return expr, nil
+}
+
+// parseCallArguments parses the argument list of a call expression for the
+// provided callee expression. It reads zero or more comma-separated expressions
+// (enforcing the parser's argument limit), consumes the closing ')', and
+// returns an ast.Call containing the callee, the closing parenthesis token, and
+// the collected argument expressions. Returns an error on syntax or arity
+// violations.
+func (parser *Parser) parseCallArguments(expr ast.Expr) (ast.Call, error) {
+	var funcArgs []ast.Expr
+	if !parser.check(token.RIGHT_PAREN) {
+		for {
+			if len(funcArgs) >= 255 {
+				return ast.Call{}, errors.ExecutionError{
+					Type:    errors.PARSER_ERROR,
+					Line:    parser.peek().Line,
+					Where:   parser.peek().Char,
+					Message: "Only 254 arguments are allowed.",
+				}
+			}
+			var expr ast.Expr
+			if parser.check(token.FUN) {
+				funcExpr, err := parser.functionExpression()
+				if err != nil {
+					return ast.Call{}, nil
+				}
+				expr = funcExpr
+			} else {
+				argExpr, err := parser.expression()
+				if err != nil {
+					return ast.Call{}, nil
+				}
+				expr = argExpr
+			}
+			funcArgs = append(funcArgs, expr)
+			if !parser.match(token.COMMA) {
+				break
+			}
+		}
+	}
+	paren, err := parser.consume(token.RIGHT_PAREN, "Expect ')' after the function arguemnts")
+	if err != nil {
+		return ast.Call{}, nil
+	}
+
+	return ast.Call{
+		Callee: expr,
+		Paren:  paren,
+		Args:   funcArgs,
+	}, nil
+
 }
 
 // primary parses a primary expression in the source code and returns an
@@ -649,8 +833,8 @@ func (parser *Parser) primary() (ast.Expr, error) {
 	}
 }
 
-// Comparison parses a comparison expression from the list of tokens.
-// It returns the root node of the abstract syntax tree.
+// match Comparison parses a comparison expression from the list of tokens.
+// If the match is successful, it advances the parser and return true
 func (parser *Parser) match(types ...token.TokenType) bool {
 	for _, tokenType := range types {
 		if parser.check(tokenType) {

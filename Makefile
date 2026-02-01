@@ -4,10 +4,7 @@ GREEN := \033[32m
 RED := \033[31m
 RESET := \033[0m
 ORANGE := \033[33m
-
 SHELL := /bin/sh
-
-
 BINARY := gointer
 CMD := ./cmd/gointer
 INTER := ./cmd/gointer
@@ -28,20 +25,23 @@ install:
 	go install $(INTER)
 	@echo "Install Done!"
 
+install-windows:
+	@echo "Building & Install the binary for Windows..."
+	@set "GOBIN=%USERPROFILE%\\go\\bin" && go install $(INTER)
+	@echo "Install Done for Windows!"
+
 update-env:
-	@echo "Sourcing the program..."
-	@if echo "$$SHELL" | grep -q "zsh"; then \
+		@if echo "$$SHELL" | grep -q "zsh"; then \
 		echo "Deteched ZSH"; \
 		echo 'export PATH=$$HOME/bin:$$PATH' >> $$HOME/.zshrc; \
 		zsh -ic "source $$HOME/.zshrc"; \
 	elif echo "$$SHELL" | grep -q "bash"; then \
 		echo "Deteched Bash";\
-		echo 'export PATH=$$HOME/bin:$$PATH' >> $$HOME/.bashrc; \
-		. "$$HOME/.bashrc"; \
+		echo 'export PATH=$$HOME/bin:$$PATH' >> ~/.bashrc; \
 	fi; \
-	echo "go interpreter has been added to your .rc file. Please restart your shell"
+	echo "go interpreter has been added to your .rc file. Please source your .bashrc"
 
-install-program: install update-env
+install-interpreter: install update-env
 
 test:
 	go test tests/

@@ -5,12 +5,11 @@ import (
 	"os"
 	"strings"
 
-	// "github.com/go-interpreter/internal/interpreter"
-	// "github.com/go-interpreter/internal/interpreter"
 	"github.com/chzyer/readline"
 	"github.com/go-interpreter/internal/interpreter"
 	"github.com/go-interpreter/internal/printer"
 	"github.com/go-interpreter/internal/scanner"
+	"github.com/go-interpreter/internal/utils"
 
 	parser "github.com/go-interpreter/internal/parser"
 )
@@ -61,11 +60,11 @@ func (repl *Repl) run(tokenScanner *scanner.TokenScanner) {
 	_ = tokenScanner.ScanTokens()
 	p := parser.NewParser(tokenScanner.Tokens)
 	parsedStatments := p.Parse()
-	inter := interpreter.NewInterpreter()
+	outputStream := utils.NewOutStream(os.Stdout, os.Stdin)
+	inter := interpreter.NewInterpreter(outputStream)
 	err := inter.Interpret(parsedStatments)
 	if err != nil {
 		repl.HadError = true
-		fmt.Println(err)
 	}
 	if repl.HadError {
 		return

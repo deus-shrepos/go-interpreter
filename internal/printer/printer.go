@@ -159,6 +159,20 @@ func (printer *PrintAST) VisitBlockStmt(node ast.Block) (interface{}, error) {
 	), nil
 }
 
+// VisitReturnStmt prints a return statement.
+func (printer *PrintAST) VisitReturnStmt(node ast.ReturnStmt) (interface{}, error) {
+	printer.indentation++
+	returnExpr, _ := node.Value.Accept(printer)
+	return fmt.Sprintf("%sReturnStmt(\n%s%s\n%s%s",
+		strings.Repeat(" ", printer.indentation),
+		node.Keyword,
+		strings.Repeat(" ", printer.indentation),
+		returnExpr,
+		strings.Repeat(" ", printer.indentation),
+	), nil
+
+}
+
 // VisitIfStmt prints an if statement.
 func (printer *PrintAST) VisitIfStmt(node ast.IfStmt) (interface{}, error) {
 	printer.indentation++
@@ -178,6 +192,51 @@ func (printer *PrintAST) VisitIfStmt(node ast.IfStmt) (interface{}, error) {
 		elseBranchStr,
 		strings.Repeat("  ", printer.indentation),
 	), nil
+}
+
+// VisitFunctionStmt prints a function declaration.
+func (printer *PrintAST) VisitFunctionStmt(node ast.Function) (interface{}, error) {
+	printer.indentation++
+	var params []string
+	for _, param := range node.Parameters {
+		params = append(params, param.Lexeme)
+	}
+	var bodyStmts []string
+	for _, stmt := range node.Body {
+		s, _ := stmt.Accept(printer)
+		bodyStmts = append(bodyStmts, s.(string))
+	}
+	printer.indentation--
+	return fmt.Sprintf("%sFunction(%s,\n%s\n%s)",
+		strings.Repeat("  ", printer.indentation),
+		strings.Join(params, ", "),
+		strings.Join(bodyStmts, "\n"),
+		strings.Repeat("  ", printer.indentation),
+	), nil
+}
+
+// VisitFunctionCall prints a function call expression.
+func (printer *PrintAST) VisitFunctionCall(node ast.Call) (interface{}, error) {
+	printer.indentation++
+	callee, _ := node.Callee.Accept(printer)
+	var args []string
+	for _, arg := range node.Args {
+		a, _ := arg.Accept(printer)
+		args = append(args, a.(string))
+	}
+	printer.indentation--
+	return fmt.Sprintf("%sCall(\n%s\n%sArguments:\n%s\n%s)",
+		strings.Repeat("  ", printer.indentation),
+		callee.(string),
+		strings.Repeat("  ", printer.indentation+1),
+		strings.Join(args, "\n"),
+		strings.Repeat("  ", printer.indentation),
+	), nil
+}
+
+// TODO: FIX IT
+func (printer *PrintAST) VisitFunctionExpression(node ast.FunctionExpr) (interface{}, error) {
+	return nil, nil
 }
 
 // VisitWhileStmt prints a while statement.

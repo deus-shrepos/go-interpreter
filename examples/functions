@@ -1,0 +1,26 @@
+
+
+var start = Clock();
+fun foobar(){
+    print "I AM FOOBAR";
+}
+
+fun sum(x, y){
+    print x + y;
+}
+
+fun doSomething(){
+    var x = 100;
+    return x;
+}
+
+foobar()
+print "\n";
+sum(1, 2)
+print "\n";
+var end = start - Clock();
+var doSomethingValue = doSomething();
+ 
+print "Total time: " + end + "s";
+print "\n";
+print "the value of looped function is" + doSomethingValue;

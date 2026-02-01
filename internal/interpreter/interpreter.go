@@ -1,26 +1,35 @@
 package interpreter
 
 import (
-	_ "errors"
 	"fmt"
 	"strconv"
 
 	"github.com/go-interpreter/internal/ast"
 	"github.com/go-interpreter/internal/errors"
 	"github.com/go-interpreter/internal/token"
+	"github.com/go-interpreter/internal/utils"
+	_ "github.com/go-interpreter/internal/utils"
 )
 
 // Interpreter represents the core structure for the interpreter.
 // It is responsible for executing and evaluating code based on the
 // implemented logic and rules of the interpreter.
 type Interpreter struct {
+	Global      *Environment // global scope for native functions, etc
 	environment *Environment
+	output      utils.OutputStream
+	hasError    bool
 }
 
-func NewInterpreter() Interpreter {
-	return Interpreter{
-		environment: NewEnvironment(nil),
+func NewInterpreter(stream utils.OutputStream) Interpreter {
+	globalScope := NewEnvironment(nil)
+	globalScope.Define("Clock", ClockFunction{}) // Native Function
+	interpreter := Interpreter{
+		Global:      globalScope,
+		environment: globalScope, // global scope is the top most scope to start with
+		output:      stream,
 	}
+	return interpreter
 }
 
 // Interpret executes a series of statements provided as input.
@@ -35,14 +44,15 @@ func (i *Interpreter) Interpret(stmts []ast.Stmt) error {
 		// If we execute a NIL that will make the whole goroutine panic.
 		// This would essentially make sure we have an early exit.
 		if statement == nil {
-			return fmt.Errorf("error: Interpreter panic. Exiting program")
+			i.output.Print("error: Interpreter panic. Exiting program")
 		}
 		_, err := i.exec(statement) // WE DO NOT EVAL STATEMENTS, WE EXECUTE THEM
 		if err != nil {
-			return fmt.Errorf("error: %v", err)
+			i.output.Error(err)
+			return err
 		}
 	}
-	fmt.Println("") // To get rid of that annoying "%" in the terminal
+	i.output.Print("\n") // To get rid of that annoying "%" in the terminal
 	return nil
 }
 
@@ -62,6 +72,22 @@ func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) (any, error) {
 	}
 	i.environment.Define(stmt.Name.Lexeme, value)
 	return nil, nil
+}
+
+// VisitReturnStmt evaluates the optional return expression and produces a ControlSignal
+// of type RETURN containing the evaluated value (nil if no expression). Any evaluation
+// error is propagated.
+func (i *Interpreter) VisitReturnStmt(stmt ast.ReturnStmt) (any, error) {
+	var returnValue any
+	if stmt.Value != nil {
+		value, err := i.eval(stmt.Value)
+		if err != nil {
+			return nil, err
+		}
+		returnValue = value
+	}
+	control := ControlSignal{Type: RETURN, Value: returnValue}
+	return control, nil
 }
 
 // VisitVariable VisitVarExpr evaluates a variable expression by retrieving its value from the current Environment.
@@ -94,7 +120,7 @@ func (i *Interpreter) VisitIfStmt(stmt ast.IfStmt) (any, error) {
 		return nil, err
 	}
 
-	if control, ok := signal.(ControlSig); ok {
+	if control, ok := signal.(ControlSignal); ok {
 		return control, nil
 	}
 
@@ -117,6 +143,68 @@ func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
 	return value, err
 }
 
+// VisitFunctionStmt processes a function statement by creating a new function object
+// and defining it in the current interpreter's environment. It takes a function statement
+// as input and returns nil and an error if any occurs during the process.
+func (i *Interpreter) VisitFunctionStmt(functionStmt ast.Function) (any, error) {
+	funcObject := NewFunction(functionStmt, i.environment)
+	i.environment.Define(functionStmt.Name.Lexeme, funcObject)
+	return nil, nil
+}
+
+// VisitFunctionCall evaluates an ast.Call node: it evaluates the callee and each argument,
+// verifies the callee implements Callable, checks the argument count matches the callable's
+// arity, and invokes the callable with the evaluated arguments. It returns the callable's
+// result or an ExecutionError when the callee is not callable or the arity is incorrect.
+func (i *Interpreter) VisitFunctionCall(functionCall ast.Call) (any, error) {
+	callee, err := i.eval(functionCall.Callee)
+	if err != nil {
+		return nil, err
+	}
+
+	var funcArgs []any
+	for _, arg := range functionCall.Args {
+		evalArg, err := i.eval(arg)
+		if err != nil {
+			return nil, err
+		}
+		funcArgs = append(funcArgs, evalArg)
+	}
+
+	function, isCallable := callee.(Callable)
+	if !isCallable {
+
+		return nil, errors.ExecutionError{
+			Type:    errors.RUNTIME_ERROR,
+			Line:    functionCall.Paren.Line,
+			Where:   functionCall.Paren.Char,
+			Message: "function callee is not a valid identifier",
+		}
+	}
+
+	if function.arity() != len(functionCall.Args) {
+		return nil, errors.ExecutionError{
+			Type:    errors.RUNTIME_ERROR,
+			Line:    functionCall.Paren.Line,
+			Where:   functionCall.Paren.Char,
+			Message: fmt.Sprintf("Expected %d arguments but got %d", function.arity(), len(functionCall.Args)),
+		}
+	}
+	return function.call(i, funcArgs)
+}
+
+// VisitFunctionExpression Visit functions that are expressions
+func (i *Interpreter) VisitFunctionExpression(functionExpr ast.FunctionExpr) (any, error) {
+	functionObject := Function{
+		Declarations: ast.Function{
+			Body:       functionExpr.Body,
+			Parameters: functionExpr.Parameters,
+		},
+		Closure: i.environment,
+	}
+	return functionObject, nil
+}
+
 // VisitBlockStmt VisitBlock executes a block statement by creating a new environment scope.
 // It runs each statement in the block within this new environment, ensuring
 // that variables declared inside the block do not affect the outer environment.
@@ -127,7 +215,7 @@ func (i *Interpreter) VisitBlockStmt(blockStmt ast.Block) (any, error) {
 		return nil, err
 	}
 
-	if control, ok := s.(ControlSig); ok {
+	if control, ok := s.(ControlSignal); ok {
 		return control, nil
 	}
 	return nil, nil
@@ -173,7 +261,7 @@ func (i *Interpreter) VisitExpressionStmt(stmt ast.ExpressionStmt) (any, error) 
 // used for side effects (printing).
 func (i *Interpreter) VisitPrintStmt(stmt ast.PrintStmt) (any, error) {
 	value, _ := i.eval(stmt.Expression)
-	fmt.Print(stringify(value))
+	i.output.Print(stringify(value))
 	return nil, nil
 }
 
@@ -213,10 +301,10 @@ func (i *Interpreter) execBlock(stmts []ast.Stmt, environment *Environment) (any
 		if err != nil {
 			return nil, err
 		}
-		if control, ok := s.(ControlSig); ok {
+		if control, ok := s.(ControlSignal); ok {
 			sig = control
 			// We do not run the rest of the statements
-			if control == CONTINUE || control == BREAK {
+			if control.Type == CONTINUE || control.Type == BREAK || control.Type == RETURN {
 				break
 			}
 		}
@@ -261,8 +349,8 @@ func (i *Interpreter) VisitWhileStmt(expr ast.WhileStmt) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		if control, ok := s.(ControlSig); ok {
-			if control == BREAK {
+		if control, ok := s.(ControlSignal); ok {
+			if control.Type == BREAK {
 				break
 			}
 		}
@@ -275,7 +363,7 @@ func (i *Interpreter) VisitWhileStmt(expr ast.WhileStmt) (any, error) {
 // It returns the BREAK control signal, which is used to exit loops during interpretation.
 // The function does not return an error.
 func (i *Interpreter) VisitBreakStmt() (any, error) {
-	return BREAK, nil
+	return ControlSignal{}, nil
 }
 
 // VisitContinueStmt handles the execution of a continue statement in the AST.
@@ -294,7 +382,7 @@ func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
 	right, _ := i.eval(expr.Right)
 	switch expr.Operator.Type {
 	case token.MINUS:
-		return right.(float64) - left.(float64), nil
+		return left.(float64) - right.(float64), nil
 	case token.PLUS:
 		// Check if the operands are strings
 		if leftValue, ok := left.(string); ok {
