@@ -236,7 +236,24 @@ func (printer *PrintAST) VisitFunctionCall(node ast.Call) (interface{}, error) {
 
 // TODO: FIX IT
 func (printer *PrintAST) VisitFunctionExpression(node ast.FunctionExpr) (interface{}, error) {
-	return nil, nil
+	printer.indentation++
+	var params []string
+	for _, param := range node.Parameters {
+		params = append(params, param.Lexeme)
+	}
+	var bodyStmts []string
+	for _, stmt := range node.Body {
+		s, _ := stmt.Accept(printer)
+		bodyStmts = append(bodyStmts, s.(string))
+	}
+	printer.indentation--
+	return fmt.Sprintf("%sFunctionExpr(%s,\n%s\n%s)",
+		strings.Repeat("  ", printer.indentation),
+		strings.Join(params, ", "),
+		strings.Join(bodyStmts, "\n"),
+		strings.Repeat("  ", printer.indentation),
+	), nil
+
 }
 
 // VisitWhileStmt prints a while statement.
