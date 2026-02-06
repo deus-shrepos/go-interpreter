@@ -548,12 +548,9 @@ func (parser *Parser) assignment() (ast.Expr, error) {
 	return expr, nil
 }
 
+// functionExpression Parse function expressions in a function call
 func (parser *Parser) functionExpression() (ast.Expr, error) {
 	functionDec, err := parser.functionDeclaration("Annoynmous", true)
-	if err != nil {
-		return nil, err
-	}
-	_, err = parser.consume(token.RIGHT_BRACE, "Expect '}' after the block.")
 	if err != nil {
 		return nil, err
 	}
@@ -750,7 +747,7 @@ func (parser *Parser) parseCallArguments(expr ast.Expr) (ast.Call, error) {
 				}
 			}
 			var expr ast.Expr
-			if parser.check(token.FUN) {
+			if parser.match(token.FUN) {
 				funcExpr, err := parser.functionExpression()
 				if err != nil {
 					return ast.Call{}, nil
