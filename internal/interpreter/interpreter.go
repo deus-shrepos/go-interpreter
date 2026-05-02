@@ -19,9 +19,10 @@ type Interpreter struct {
 	environment *Environment
 	output      utils.OutputStream
 	hasError    bool
+	Tracer
 }
 
-func NewInterpreter(stream utils.OutputStream) Interpreter {
+func NewInterpreter(stream utils.OutputStream, trace bool) Interpreter {
 	globalScope := NewEnvironment(nil)
 	globalScope.Define("Clock", ClockFunction{}) // Native Function
 	interpreter := Interpreter{
@@ -29,6 +30,7 @@ func NewInterpreter(stream utils.OutputStream) Interpreter {
 		environment: globalScope, // global scope is the top most scope to start with
 		output:      stream,
 	}
+	interpreter.TraceEnabled = trace
 	return interpreter
 }
 
@@ -36,6 +38,7 @@ func NewInterpreter(stream utils.OutputStream) Interpreter {
 // It iterates over each statement, executing them one by one using the exec method.
 // If an error occurs during the execution of a statement, it logs the error to the console.
 func (i *Interpreter) Interpret(stmts []ast.Stmt) error {
+	defer i.Trace()()
 	if len(stmts) == 0 {
 		return nil
 	}
@@ -62,6 +65,7 @@ func (i *Interpreter) Interpret(stmts []ast.Stmt) error {
 // encountered during evaluation. If no initializer is provided, the variable
 // is defined with a nil value.
 func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) (any, error) {
+	defer i.Trace()()
 	var value any = nil
 	if stmt.Initializer != nil {
 		var err error = nil
@@ -78,6 +82,7 @@ func (i *Interpreter) VisitVarStmt(stmt ast.VarStmt) (any, error) {
 // of type RETURN containing the evaluated value (nil if no expression). Any evaluation
 // error is propagated.
 func (i *Interpreter) VisitReturnStmt(stmt ast.ReturnStmt) (any, error) {
+	defer i.Trace()()
 	var returnValue any
 	if stmt.Value != nil {
 		value, err := i.eval(stmt.Value)
@@ -94,6 +99,7 @@ func (i *Interpreter) VisitReturnStmt(stmt ast.ReturnStmt) (any, error) {
 // It takes an ast.Variable as input, attempts to get the value associated with the variable's name,
 // and returns the value along with any error encountered during the lookup.
 func (i *Interpreter) VisitVariable(expr ast.Variable) (any, error) {
+	defer i.Trace()()
 	value, err := i.environment.Get(expr.Name)
 	if err != nil {
 		return nil, err
@@ -106,6 +112,7 @@ func (i *Interpreter) VisitVariable(expr ast.Variable) (any, error) {
 // If the condition is not truthy and an else branch exists, it executes the else branch.
 // Returns nil and any error encountered during evaluation or execution.
 func (i *Interpreter) VisitIfStmt(stmt ast.IfStmt) (any, error) {
+	defer i.Trace()()
 	evaluatedExpr, err := i.eval(stmt.Condition) // Evaluate the if-condition
 	if err != nil {
 		return nil, err
@@ -132,6 +139,7 @@ func (i *Interpreter) VisitIfStmt(stmt ast.IfStmt) (any, error) {
 // It evaluates the right-hand side value, then assigns it to the variable in the current Environment.
 // Returns the assigned value and any error encountered during evaluation or assignment.
 func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
+	defer i.Trace()()
 	value, err := i.eval(expr.Value)
 	if err != nil {
 		return nil, err
@@ -147,6 +155,7 @@ func (i *Interpreter) VisitAssign(expr ast.Assign) (any, error) {
 // and defining it in the current interpreter's environment. It takes a function statement
 // as input and returns nil and an error if any occurs during the process.
 func (i *Interpreter) VisitFunctionStmt(functionStmt ast.Function) (any, error) {
+	defer i.Trace()()
 	funcObject := NewFunction(functionStmt, i.environment)
 	i.environment.Define(functionStmt.Name.Lexeme, funcObject)
 	return nil, nil
@@ -157,6 +166,7 @@ func (i *Interpreter) VisitFunctionStmt(functionStmt ast.Function) (any, error) 
 // arity, and invokes the callable with the evaluated arguments. It returns the callable's
 // result or an ExecutionError when the callee is not callable or the arity is incorrect.
 func (i *Interpreter) VisitFunctionCall(functionCall ast.Call) (any, error) {
+	defer i.Trace()()
 	callee, err := i.eval(functionCall.Callee)
 	if err != nil {
 		return nil, err
@@ -195,6 +205,7 @@ func (i *Interpreter) VisitFunctionCall(functionCall ast.Call) (any, error) {
 
 // VisitFunctionExpression Visit functions that are expressions
 func (i *Interpreter) VisitFunctionExpression(functionExpr ast.FunctionExpr) (any, error) {
+	defer i.Trace()()
 	functionObject := Function{
 		Declarations: ast.Function{
 			Body:       functionExpr.Body,
@@ -210,6 +221,7 @@ func (i *Interpreter) VisitFunctionExpression(functionExpr ast.FunctionExpr) (an
 // that variables declared inside the block do not affect the outer environment.
 // Returns nil and any error encountered during execution.
 func (i *Interpreter) VisitBlockStmt(blockStmt ast.Block) (any, error) {
+	defer i.Trace()()
 	s, err := i.execBlock(blockStmt.Statements, NewEnvironment(i.environment))
 	if err != nil {
 		return nil, err
@@ -226,12 +238,14 @@ func (i *Interpreter) VisitBlockStmt(blockStmt ast.Block) (any, error) {
 // along with any potential error. Literal expressions represent constant
 // values such as numbers, strings, or booleans in the abstract syntax tree.
 func (i *Interpreter) VisitLiteral(expr ast.Literal) (any, error) {
+	defer i.Trace()()
 	return expr.Value, nil
 }
 
 // VisitUnary evaluates a unary expression in the abstract syntax tree (AST).
 // It performs a post-order evaluation of the operand and applies the unary operator.
 func (i *Interpreter) VisitUnary(expr ast.Unary) (any, error) {
+	defer i.Trace()()
 	right, _ := i.eval(expr.Right) // POST ORDER EVALUATION
 	switch expr.Operator.Type {
 	case token.MINUS:
@@ -250,6 +264,7 @@ func (i *Interpreter) VisitUnary(expr ast.Unary) (any, error) {
 // It takes an ExpressionStmt from the AST as input and returns the result of evaluating
 // the expression along with any potential error encountered during evaluation.
 func (i *Interpreter) VisitExpressionStmt(stmt ast.ExpressionStmt) (any, error) {
+	defer i.Trace()()
 	return i.eval(stmt.Expression)
 }
 
@@ -260,6 +275,7 @@ func (i *Interpreter) VisitExpressionStmt(stmt ast.ExpressionStmt) (any, error) 
 // Returns nil for both the result and error as this function is primarily
 // used for side effects (printing).
 func (i *Interpreter) VisitPrintStmt(stmt ast.PrintStmt) (any, error) {
+	defer i.Trace()()
 	value, _ := i.eval(stmt.Expression)
 	i.output.Print(stringify(value))
 	return nil, nil
@@ -269,6 +285,7 @@ func (i *Interpreter) VisitPrintStmt(stmt ast.PrintStmt) (any, error) {
 // the inner expression contained within the grouping. It returns the result
 // of the evaluation or an error if the evaluation fails.
 func (i *Interpreter) VisitGrouping(expr ast.Grouping) (any, error) {
+	defer i.Trace()()
 	return i.eval(expr.Expression)
 }
 
@@ -276,6 +293,7 @@ func (i *Interpreter) VisitGrouping(expr ast.Grouping) (any, error) {
 // to the expression's Accept method. It returns the result of the evaluation
 // along with any error encountered during the process.
 func (i *Interpreter) eval(expr ast.Expr) (any, error) {
+	defer i.Trace()()
 	return expr.Accept(i)
 }
 
@@ -283,6 +301,7 @@ func (i *Interpreter) eval(expr ast.Expr) (any, error) {
 // passing the current Interpreter instance. It returns the result
 // of the statement execution along with any potential error.
 func (i *Interpreter) exec(stmt ast.Stmt) (any, error) {
+	defer i.Trace()()
 	return stmt.Accept(i)
 }
 
@@ -292,6 +311,7 @@ func (i *Interpreter) exec(stmt ast.Stmt) (any, error) {
 // If any statement returns an error, execution stops and the error is returned.
 // Returns nil and any error encountered during execution.
 func (i *Interpreter) execBlock(stmts []ast.Stmt, environment *Environment) (any, error) {
+	defer i.Trace()()
 	previous := i.environment
 	i.environment = environment
 	defer func() { i.environment = previous }() // Always make sure we get the environments right to avoid recursion bugs
@@ -319,6 +339,7 @@ func (i *Interpreter) execBlock(stmts []ast.Stmt, environment *Environment) (any
 // Otherwise, it evaluates and returns the right operand.
 // Returns the result of the logical operation and any error encountered during evaluation.
 func (i *Interpreter) VisitLogical(expr ast.Logical) (any, error) {
+	defer i.Trace()()
 	left, err := i.eval(expr.Left)
 	if err != nil {
 		return nil, err
@@ -340,6 +361,7 @@ func (i *Interpreter) VisitLogical(expr ast.Logical) (any, error) {
 }
 
 func (i *Interpreter) VisitWhileStmt(expr ast.WhileStmt) (any, error) {
+	defer i.Trace()()
 	condition, err := i.eval(expr.Condition)
 	if err != nil {
 		return nil, err
@@ -363,6 +385,7 @@ func (i *Interpreter) VisitWhileStmt(expr ast.WhileStmt) (any, error) {
 // It returns the BREAK control signal, which is used to exit loops during interpretation.
 // The function does not return an error.
 func (i *Interpreter) VisitBreakStmt() (any, error) {
+	defer i.Trace()()
 	return ControlSignal{}, nil
 }
 
@@ -371,6 +394,7 @@ func (i *Interpreter) VisitBreakStmt() (any, error) {
 // and continue with the next iteration of a loop during interpretation.
 // The function does not return an error.
 func (i *Interpreter) VisitContinueStmt() (any, error) {
+	defer i.Trace()()
 	return CONTINUE, nil
 }
 
@@ -378,6 +402,7 @@ func (i *Interpreter) VisitContinueStmt() (any, error) {
 // and applying the operator specified in the expression. It supports various operators
 // such as arithmetic, comparison, logical, and string concatenation.
 func (i *Interpreter) VisitBinary(expr ast.Binary) (any, error) {
+	defer i.Trace()()
 	left, _ := i.eval(expr.Left)
 	right, _ := i.eval(expr.Right)
 	switch expr.Operator.Type {
