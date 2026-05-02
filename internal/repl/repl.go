@@ -27,7 +27,7 @@ func NewRepl() *Repl {
 // Runfile We want to scan the tokens in a file
 // We want to scan correct tokens defined
 // in out hypothetical language
-func (repl *Repl) LoadProgramFromPath(path string, astOnly bool) {
+func (repl *Repl) LoadProgramFromPath(path string, astOnly bool, traceEnabled bool) {
 	if repl.HadError {
 		panic("Program execution stopped!")
 
@@ -43,25 +43,25 @@ func (repl *Repl) LoadProgramFromPath(path string, astOnly bool) {
 	if astOnly {
 		repl.PrintAST(&tokenScanner)
 	}
-	repl.run(&tokenScanner)
+	repl.run(&tokenScanner, traceEnabled)
 }
 
-func (repl *Repl) LoadFromString(program string, astOnly bool) {
+func (repl *Repl) LoadFromString(program string, astOnly bool, traceEnabled bool) {
 	tokenScanner := scanner.NewTokenScanner(program)
 	if astOnly {
 		repl.PrintAST(&tokenScanner)
 		return
 	}
-	repl.run(&tokenScanner)
+	repl.run(&tokenScanner, traceEnabled)
 }
 
 // This your token scanner for the program
-func (repl *Repl) run(tokenScanner *scanner.TokenScanner) {
+func (repl *Repl) run(tokenScanner *scanner.TokenScanner, traceEnabled bool) {
 	_ = tokenScanner.ScanTokens()
 	p := parser.NewParser(tokenScanner.Tokens)
 	parsedStatments := p.Parse()
 	outputStream := utils.NewOutStream(os.Stdout, os.Stdin)
-	inter := interpreter.NewInterpreter(outputStream)
+	inter := interpreter.NewInterpreter(outputStream, traceEnabled)
 	err := inter.Interpret(parsedStatments)
 	if err != nil {
 		repl.HadError = true
